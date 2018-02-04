@@ -1,21 +1,26 @@
 package laya.d3.core {
-	import laya.d3.core.render.RenderState;
+	import laya.d3.graphics.IndexBuffer3D;
+	import laya.d3.graphics.VertexBuffer3D;
+	import laya.d3.graphics.VertexDeclaration;
+	import laya.d3.graphics.VertexElement;
+	import laya.d3.graphics.VertexElementFormat;
 	import laya.d3.graphics.VertexElementUsage;
-	import laya.d3.math.Matrix4x4;
-	import laya.d3.shader.ShaderDefines3D;
+	import laya.d3.math.Vector3;
+	import laya.d3.math.Vector4;
+	import laya.d3.shader.Shader3D;
+	import laya.d3.shader.ShaderCompile3D;
+	import laya.d3.shader.ValusArray;
 	import laya.utils.Stat;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
-	import laya.webgl.shader.Shader;
-	import laya.webgl.utils.Buffer2D;
-	import laya.webgl.utils.IndexBuffer2D;
-	import laya.webgl.utils.VertexBuffer2D;
 	
 	/**
 	 * @private
 	 * <code>PhasorSpriter3D</code> 类用于创建矢量笔刷。
 	 */
 	public class PhasorSpriter3D {
+		private static const _vertexDeclaration:VertexDeclaration = new VertexDeclaration(28, [new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.POSITION0), new VertexElement(12, VertexElementFormat.Vector4, VertexElementUsage.COLOR0)]);
+		
 		private var _tempInt0:int;
 		private var _tempInt1:int;
 		private var _tempUint0:uint;
@@ -35,34 +40,35 @@ package laya.d3.core {
 		private const _defaultBufferSize:int = 600 * _floatSizePerVer;
 		
 		private var _vbData:Float32Array = new Float32Array(_defaultBufferSize);
-		private var _vb:VertexBuffer2D;
+		private var _vb:VertexBuffer3D;
 		private var _posInVBData:uint;
 		
 		private var _ibData:Uint16Array = new Uint16Array(_defaultBufferSize);
-		private var _ib:IndexBuffer2D;
+		private var _ib:IndexBuffer3D;
 		private var _posInIBData:uint;
 		
 		private var _primitiveType:Number;
 		private var _hasBegun:Boolean;
 		private var _numVertsPerPrimitive:uint;
 		
-		private var _renderState:RenderState;
+		private var _camera:BaseCamera;
 		
 		private var _sharderNameID:int;
-		private var _shader:Shader;
-		private var _posShaderValue:* = [3, WebGLContext.FLOAT, false, 28, 0];
-		private var _colorShaderValue:* = [4, WebGLContext.FLOAT, false, 28, 12];
-		
-		private var _wvpMatrix:Matrix4x4 = new Matrix4x4();
+		private var _shader:Shader3D;
+		/** @private */
+		protected var _shaderCompile:ShaderCompile3D;
+		/** @private */
+		private var _spriteShaderValue:ValusArray = new ValusArray();
 		
 		public function PhasorSpriter3D() {
 			super();
-			_vb = new VertexBuffer2D(-1,WebGLContext.DYNAMIC_DRAW);
-			_ib = new IndexBuffer2D();
-			_sharderNameID = Shader.nameKey.get("SIMPLE");
+			_vb = VertexBuffer3D.create(_vertexDeclaration, _defaultBufferSize / _floatSizePerVer, WebGLContext.DYNAMIC_DRAW);
+			_ib = IndexBuffer3D.create(IndexBuffer3D.INDEXTYPE_USHORT, _defaultBufferSize, WebGLContext.DYNAMIC_DRAW);
+			_sharderNameID = Shader3D.nameKey.getID("LINE");
+			_shaderCompile = ShaderCompile3D._preCompileShader[_sharderNameID];
 		}
 		
-		public function line(startX:Number, startY:Number, startZ:Number, startR:Number, startG:Number, startB:Number, startA:Number, endX:Number, endY:Number, endZ:Number, endR:Number, endG:Number, endB:Number, endA:Number):PhasorSpriter3D {
+		public function line(startPosition:Vector3, startColor:Vector4, endPosition:Vector3, endColor:Vector4):PhasorSpriter3D {
 			if (!_hasBegun || _primitiveType !== WebGLContext.LINES)
 				drawLinesException();
 			
@@ -70,8 +76,8 @@ package laya.d3.core {
 				flush();
 			
 			_tempUint0 = _posInVBData / _floatSizePerVer;//_tempUint0为curVBPosVertex
-			addVertex(startX, startY, startZ, startR, startG, startB, startA); // start
-			addVertex(endX, endY, endZ, endR, endG, endB, endA); // end
+			addVertex(startPosition.x, startPosition.y, startPosition.z, startColor.x, startColor.y, startColor.z, startColor.w); // start
+			addVertex(endPosition.x, endPosition.y, endPosition.z, endColor.x, endColor.y, endColor.z, endColor.w); // end
 			addIndexes(_tempUint0, _tempUint0 + 1);
 			
 			return this;
@@ -233,7 +239,7 @@ package laya.d3.core {
 			return this;
 		}
 		
-		public function boudningBoxLine(minX:Number, minY:Number, minZ:Number, maxX:Number, maxY:Number, maxZ:Number, r:Number, g:Number, b:Number, a:Number):PhasorSpriter3D {
+		public function boundingBoxLine(minX:Number, minY:Number, minZ:Number, maxX:Number, maxY:Number, maxZ:Number, r:Number, g:Number, b:Number, a:Number):PhasorSpriter3D {
 			if (!_hasBegun || _primitiveType !== WebGLContext.LINES)
 				drawLinesException();
 			
@@ -317,7 +323,7 @@ package laya.d3.core {
 			return this;
 		}
 		
-		public function begin(primitive:Number, wvpMatrix:Matrix4x4, renState:RenderState):PhasorSpriter3D {
+		public function begin(primitive:Number, camera:BaseCamera):PhasorSpriter3D {
 			if (_hasBegun)
 				beginException0();
 			
@@ -325,8 +331,7 @@ package laya.d3.core {
 				beginException1();
 			
 			_primitiveType = primitive;
-			_wvpMatrix = wvpMatrix;
-			_renderState = renState;
+			_camera = camera;
 			
 			_hasBegun = true;
 			
@@ -345,46 +350,24 @@ package laya.d3.core {
 		private function flush():void {
 			if (_posInVBData === 0)
 				return;
-				
-			_ib.clear();
-			_ib.append(_ibData);//TODO:待调整
-			_vb.clear();
-			_vb.append(_vbData);//TODO:待调整
 			
-			_vb.bind_upload(_ib);
+			_ib.setData(_ibData);
+			_vb.setData(_vbData);
+			_vb._bind();
+			_ib._bind();
 			
+			_shader = _shaderCompile.withCompile(0, 0, 0);
+			_shader.bind();
 			
-			
-			var presz:int = _renderState.shaderValue.length;
-			var predef:int = _renderState.shaderDefs.getValue();
-			
-			_shader = getShader(_renderState);
-			
-			_renderState.shaderValue.pushValue(VertexElementUsage.POSITION0, _posShaderValue, -1);
-			_renderState.shaderValue.pushValue(VertexElementUsage.COLOR0, _colorShaderValue, -1);
-			_renderState.shaderValue.pushValue(Buffer2D.MVPMATRIX, _wvpMatrix.elements, -1);
-			_renderState.shaderValue.pushValue(Buffer2D.LUMINANCE, 1.0, -1);
-			
-			_shader.uploadArray(_renderState.shaderValue.data, _renderState.shaderValue.length, null);
-			
-			_renderState.shaderDefs.setValue(predef);
-			_renderState.shaderValue.length = presz;
+			_shader.uploadAttributes(_vertexDeclaration.shaderValues.data, null);
+			_spriteShaderValue.setValue(Sprite3D.MVPMATRIX, (_camera as Camera).projectionViewMatrix.elements);
+			_shader.uploadSpriteUniforms(_spriteShaderValue.data);
 			
 			Stat.drawCall++;
 			WebGL.mainContext.drawElements(_primitiveType, _posInIBData, WebGLContext.UNSIGNED_SHORT, 0);
 			
 			_posInIBData = 0;
 			_posInVBData = 0;
-		}
-		
-		protected function getShader(state:RenderState):Shader {
-			var preDef:int = state.shaderDefs._value;
-			state.shaderDefs._value = preDef & (~(ShaderDefines3D.POINTLIGHT | ShaderDefines3D.SPOTLIGHT | ShaderDefines3D.DIRECTIONLIGHT));//无法线，去掉Shader光照宏定义
-			state.shaderDefs.add(ShaderDefines3D.COLOR);
-			
-			var nameID:Number = state.shaderDefs.getValue() | state.shadingMode + _sharderNameID * Shader.SHADERNAME2ID;
-			var shader:Shader = _shader ? _shader : Shader.getShader(nameID);
-			return shader || (shader = Shader.withCompile(_sharderNameID, state.shadingMode, state.shaderDefs.toNameDic(), nameID, null));
 		}
 		
 		private function addVertexIndexException():void {
@@ -404,11 +387,11 @@ package laya.d3.core {
 		}
 		
 		private function drawLinesException():void {
-			throw new Error("您必须确保在此之前已调用bengin()且使用“LINES”基元！");
+			throw new Error("您必须确保在此之前已调用begin()且使用“LINES”基元！");
 		}
 		
 		private function drawTrianglesException():void {
-			throw new Error("您必须确保在此之前已调用bengin()且使用“TRIANGLES”基元！");
+			throw new Error("您必须确保在此之前已调用begin()且使用“TRIANGLES”基元！");
 		}
 	
 	}

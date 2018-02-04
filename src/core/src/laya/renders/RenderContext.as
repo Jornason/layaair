@@ -30,6 +30,7 @@ package laya.renders {
 			if (canvas) {
 				canvas.destroy();
 				canvas = null;
+				ctx = null;
 			}
 			if (ctx) {
 				ctx.destroy();
@@ -52,52 +53,25 @@ package laya.renders {
 		public function drawTexture(tex:Texture, x:Number, y:Number, width:Number, height:Number):void {
 			if (tex.loaded) this.ctx.drawTexture(tex, x, y, width, height, this.x, this.y);
 		}
+		
 		public var _drawTexture:Function = function(x:Number, y:Number, args:Array):void {
 			if (args[0].loaded) this.ctx.drawTexture(args[0], args[1], args[2], args[3], args[4], x, y);
 		}
-		public var _fillTexture:Function = function(x:Number, y:Number, args:Array):void {
-			if (args[0].loaded) {
-				var texture:Texture = args[0];
-				var ctxi:* = this.ctx;
-				var pat:*;
-				if (!Render.isConchApp) {
-					if (texture.uv != Texture.DEF_UV) {
-						var canvas:HTMLCanvas = new HTMLCanvas("2D");
-						canvas.getContext('2d');
-						canvas.size(texture.width, texture.height);
-						canvas.context.drawTexture(texture, 0, 0, texture.width, texture.height, 0, 0);
-						args[0] = texture = new Texture(canvas);
-					}
-					pat = args[7] ? args[7] : args[7] = ctxi.createPattern(texture.bitmap.source, args[5]);
-				} else {
-					if (texture.uv != Texture.DEF_UV) {
-						var w:Number = texture.bitmap.width, h:Number = texture.bitmap.height, uv:Array = texture.uv;
-						pat = args[7] ? args[7] : args[7] = ctxi.createPattern(texture.bitmap.source, args[5], uv[0] * w, uv[1] * h, (uv[2] - uv[0]) * w, (uv[5] - uv[3]) * h);
-					} else {
-						pat = args[7] ? args[7] : args[7] = ctxi.createPattern(texture.bitmap.source, args[5]);
-					}
-				}
-				var oX:Number = x + args[1], oY:Number = y + args[2];
-				var sX:Number = 0, sY:Number = 0;
-				if (args[6]) {
-					oX += args[6].x % texture.width;
-					oY += args[6].y % texture.height;
-					sX -= args[6].x % texture.width;
-					sY -= args[6].y % texture.height;
-				}
-				ctxi.translate(oX, oY);
-				ctxi.fillStyle = pat;
-				ctxi.fillRect(sX, sY, args[3], args[4]);
-				ctxi.translate(-oX, -oY);
-			} else {
-			}
+		
+		public function _drawTextures(x:Number, y:Number, args:Array):void
+		{
+			if (args[0].loaded) this.ctx.drawTextures(args[0], args[1], x+this.x, y+this.y);
 		}
 		
-		public function drawTextureWithTransform(tex:Texture, x:Number, y:Number, width:Number, height:Number, m:Matrix):void {
-			if (tex.loaded) this.ctx.drawTextureWithTransform(tex, x, y, width, height, m, this.x, this.y);
+		public var _fillTexture:Function = function(x:Number, y:Number, args:Array):void {
+			if (args[0].loaded) this.ctx.fillTexture(args[0], args[1]+x, args[2]+y, args[3], args[4], args[5], args[6],args[7]);
+		}
+		
+		public function drawTextureWithTransform(tex:Texture, x:Number, y:Number, width:Number, height:Number, m:Matrix, alpha:Number):void {
+			if (tex.loaded) this.ctx.drawTextureWithTransform(tex, x, y, width, height, m, this.x, this.y,alpha);
 		}
 		public var _drawTextureWithTransform:Function = function(x:Number, y:Number, args:Array):void {
-			if (args[0].loaded) this.ctx.drawTextureWithTransform(args[0], args[1], args[2], args[3], args[4], args[5], x, y);
+			if (args[0].loaded) this.ctx.drawTextureWithTransform(args[0], args[1], args[2], args[3], args[4], args[5], x, y,args[6]);
 		}
 		
 		public function fillQuadrangle(tex:*, x:Number, y:Number, point4:Array, m:Matrix):void {
@@ -294,21 +268,7 @@ package laya.renders {
 		
 		//x:Number, y:Number, points:Array, lineColor:String, lineWidth:Number = 1
 		public var _drawCurves:Function = function(x:Number, y:Number, args:Array):void {
-			var ctx:* = this.ctx;
-			Render.isWebGL && ctx.setPathId(-1);
-			ctx.beginPath();
-			ctx.strokeStyle = args[3];
-			ctx.lineWidth = args[4];
-			
-			var points:Array = args[2];
-			x += args[0], y += args[1];
-			ctx.moveTo(x + points[0], y + points[1]);
-			
-			var i:int = 2, n:int = points.length;
-			while (i < n) {
-				ctx.quadraticCurveTo(x + points[i++], y + points[i++], x + points[i++], y + points[i++]);
-			}
-			ctx.stroke();
+			this.ctx.drawCurves(x, y, args);
 		}
 		
 		public var _draw:Function = function(x:Number, y:Number, args:Array):void {
@@ -405,10 +365,13 @@ package laya.renders {
 			this.ctx.globalAlpha = args[0];
 		}
 		
-		public function fillWords(words:Vector.<HTMLChar>, x:Number, y:Number, font:String, color:String):void {
-			this.ctx.fillWords(words, x, y, font, color);
+		public function fillWords(words:Vector.<HTMLChar>, x:Number, y:Number, font:String, color:String,underLine:int=0):void {
+			this.ctx.fillWords(words, x, y, font, color,underLine);
 		}
-		
+		/*** @private */
+		public function fillBorderWords(words:Vector.<HTMLChar>, x:Number, y:Number, font:String, fillColor:String, borderColor:String, lineWidth:int):void {	
+			this.ctx.fillBorderWords(words, x, y, font, fillColor,borderColor,lineWidth);
+		}
 		public function fillText(text:String, x:Number, y:Number, font:String, color:String, textAlign:String):void {
 			this.ctx.fillText(text, x + this.x, y + this.y, font, color, textAlign);
 		}
@@ -471,20 +434,20 @@ package laya.renders {
 			Render.isWebGL && ctx.setPathId(-1);
 			ctx.beginPath();
 			x += args[0], y += args[1];
-			
+			Render.isWebGL && ctx.movePath(x, y);
 			var paths:Array = args[2];
 			for (var i:int = 0, n:int = paths.length; i < n; i++) {
 				
 				var path:Array = paths[i];
 				switch (path[0]) {
 				case "moveTo": 
-					ctx.moveTo(x + path[1], y + path[2]);
+					Render.isWebGL ? ctx.moveTo(path[1], path[2]) : ctx.moveTo(x + path[1], y + path[2]);
 					break;
 				case "lineTo": 
-					ctx.lineTo(x + path[1], y + path[2]);
+					Render.isWebGL ? ctx.lineTo(path[1], path[2]) : ctx.lineTo(x + path[1], y + path[2]);
 					break;
 				case "arcTo": 
-					ctx.arcTo(x + path[1], y + path[2], x + path[3], y + path[4], path[5]);
+					Render.isWebGL ? ctx.arcTo(path[1], path[2], path[3], path[4], path[5]) : ctx.arcTo(x + path[1], y + path[2], x + path[3], y + path[4], path[5]);
 					break;
 				case "closePath": 
 					ctx.closePath();
@@ -534,15 +497,29 @@ package laya.renders {
 				ctx.moveTo(x + points[0], y + points[1]);
 				while (i < n) {
 					ctx.lineTo(x + points[i++], y + points[i++]);
-				}
-				
+				}				
 			}
 			ctx.closePath();
 			this._fillAndStroke(args[3], args[4], args[5], args[7]);
 		}
 		
+		public var _drawSkin:Function = function(x:Number, y:Number, args:Array):void {
+			var tSprite:* = args[0];
+			if (tSprite)
+			{
+				var ctx:* = this.ctx;
+				tSprite.render(ctx,x,y);
+			}
+		}
+		
 		public var _drawParticle:Function = function(x:Number, y:Number, args:Array):void {
 			this.ctx.drawParticle(x + this.x, y + this.y, args[0]);
 		}
+		
+		
+		public var _setFilters:Function = function(x:Number, y:Number, args:Array):void {
+			this.ctx.setFilters(args);
+		}
+		//(f:ColorFilter):void
 	}
 }

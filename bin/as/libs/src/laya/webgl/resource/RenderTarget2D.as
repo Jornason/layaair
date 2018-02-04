@@ -1,15 +1,13 @@
 package laya.webgl.resource {
+	import laya.events.Event;
 	import laya.resource.IDispose;
 	import laya.resource.Texture;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
+	import laya.webgl.shader.BaseShader;
 	import laya.webgl.shader.Shader;
 	import laya.webgl.utils.RenderState2D;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class RenderTarget2D extends Texture implements IDispose {
 		//TODO:临时...............................................
 		public static const TYPE2D:int = 1;
@@ -30,7 +28,7 @@ package laya.webgl.resource {
 		private var _repeat:Boolean;
 		private var _minFifter:int;
 		private var _magFifter:int;
-		private var _destroy:Boolean = false;
+		public var _destroy:Boolean = false;
 		
 		public function get surfaceFormat():int {
 			return _surfaceFormat;
@@ -49,7 +47,7 @@ package laya.webgl.resource {
 		}
 		
 		//public function get repeat():Boolean {
-			//return _repeat;
+		//return _repeat;
 		//}
 		
 		public function get minFifter():int {
@@ -64,7 +62,8 @@ package laya.webgl.resource {
 		override public function get source():* {
 			if (_alreadyResolved)
 				return super.source;
-			throw new Error("RenderTarget  还未准备好！");
+			return null;
+			//throw new Error("RenderTarget  还未准备好！");
 		}
 		
 		/**
@@ -75,7 +74,7 @@ package laya.webgl.resource {
 		 * @param surfaceType    WebGLContext.UNSIGNED_BYTE  数据类型
 		 * @param depthFormat WebGLContext.DEPTH_COMPONENT16 数据类型等
 		 * **/
-		public function RenderTarget2D(width:int, height:int, surfaceFormat:int = WebGLContext.RGBA, surfaceType:int = WebGLContext.UNSIGNED_BYTE, depthStencilFormat:int = WebGLContext.DEPTH_COMPONENT16, mipMap:Boolean = false, repeat:Boolean = false, minFifter:int = -1, magFifter:int = -1) {
+		public function RenderTarget2D(width:int, height:int, surfaceFormat:int = WebGLContext.RGBA, surfaceType:int = WebGLContext.UNSIGNED_BYTE, depthStencilFormat:int = WebGLContext.DEPTH_STENCIL, mipMap:Boolean = false, repeat:Boolean = false, minFifter:int = -1, magFifter:int = -1) {
 			_type = TYPE2D;//待调整
 			_w = width;
 			_h = height;
@@ -107,12 +106,11 @@ package laya.webgl.resource {
 		}
 		
 		public function size(w:Number, h:Number):void {
-			if (bitmap && _w == w && _h == h)
-				return;
+			if (_w == w && _h == h)return;
 			_w = w;
 			_h = h;
 			release();
-			_createWebGLRenderTarget();
+			if (_w != 0 && _h != 0)_createWebGLRenderTarget();
 		}
 		
 		public function release():void {
@@ -123,30 +121,21 @@ package laya.webgl.resource {
 			POOL.push(this);
 		}
 		
-		public static function create(w:int, h:int, surfaceFormat:int = WebGLContext.RGBA, surfaceType:int = WebGLContext.UNSIGNED_BYTE, depthStencilFormat:int = WebGLContext.DEPTH_COMPONENT16, mipMap:Boolean = false, repeat:Boolean = false, minFifter:int = -1, magFifter:int = -1):RenderTarget2D {
+		public static function create(w:int, h:int, surfaceFormat:int = WebGLContext.RGBA, surfaceType:int = WebGLContext.UNSIGNED_BYTE, depthStencilFormat:int = WebGLContext.DEPTH_STENCIL, mipMap:Boolean = false, repeat:Boolean = false, minFifter:int = -1, magFifter:int = -1):RenderTarget2D {
 			var t:RenderTarget2D = POOL.pop();
 			t || (t = new RenderTarget2D(w, h));
 			
-			if (!t.bitmap || 
-			t._w != w || 
-			t._h != h || 
-			t._surfaceFormat != surfaceFormat || 
-			t._surfaceType != surfaceType || 
-			t._depthStencilFormat != depthStencilFormat || 
-			t._mipMap != mipMap || 
-			t._repeat != repeat || 
-			t._minFifter != minFifter || 
-			t._magFifter != magFifter) {
-			    t._w = w;
-			    t._h = h;
-			    t._surfaceFormat = surfaceFormat;
-			    t._surfaceType = surfaceType;
-			    t._depthStencilFormat = depthStencilFormat;  
-			    t._mipMap = mipMap;  
-			    t._repeat = repeat;  
-			    t._minFifter = minFifter;  
-			    t._magFifter = magFifter;
-			
+			if (!t.bitmap || t._w != w || t._h != h || t._surfaceFormat != surfaceFormat || t._surfaceType != surfaceType || t._depthStencilFormat != depthStencilFormat || t._mipMap != mipMap || t._repeat != repeat || t._minFifter != minFifter || t._magFifter != magFifter) {
+				t._w = w;
+				t._h = h;
+				t._surfaceFormat = surfaceFormat;
+				t._surfaceType = surfaceType;
+				t._depthStencilFormat = depthStencilFormat;
+				t._mipMap = mipMap;
+				t._repeat = repeat;
+				t._minFifter = minFifter;
+				t._magFifter = magFifter;
+				
 				t.release();
 				t._createWebGLRenderTarget();
 			}
@@ -168,7 +157,7 @@ package laya.webgl.resource {
 				_svHeight = RenderState2D.height;
 				RenderState2D.width = _w;
 				RenderState2D.height = _h;
-				Shader.activeShader = null;
+				BaseShader.activeShader = null;
 			}
 			
 			return this;
@@ -206,7 +195,7 @@ package laya.webgl.resource {
 				gl.viewport(0, 0, _svWidth, _svHeight);
 				RenderState2D.width = _svWidth;
 				RenderState2D.height = _svHeight;
-				Shader.activeShader = null;
+				BaseShader.activeShader = null;
 			} else gl.viewport(0, 0, Laya.stage.width, Laya.stage.height);
 		}
 		
@@ -230,8 +219,12 @@ package laya.webgl.resource {
 		override public function destroy(foreDiposeTexture:Boolean = false):void {//待优化
 			if (!_destroy) {
 				_loaded = false;
+				bitmap.offAll();
+				bitmap.disposeResource();
 				bitmap.dispose();
+				this.offAll();
 				bitmap = null;
+				_alreadyResolved = false;
 				_destroy = true;
 				super.destroy();//待测试
 			}
@@ -246,6 +239,9 @@ package laya.webgl.resource {
 			_alreadyResolved = true;
 			_destroy = false;
 			_loaded = true;
+			bitmap.on( Event.RECOVERED, this, function(e:Event):void{
+				this.event(Event.RECOVERED);
+			})
 		}
 	
 	}

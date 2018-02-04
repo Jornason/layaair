@@ -1,24 +1,18 @@
 package laya.webgl.submit {
-	import laya.maths.Matrix;
 	import laya.resource.Bitmap;
 	import laya.resource.Texture;
-	import laya.webgl.submit.ISubmit;
 	import laya.utils.Stat;
-	import laya.webgl.utils.IndexBuffer2D;
-	import laya.webgl.utils.VertexBuffer2D;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
 	import laya.webgl.canvas.BlendMode;
 	import laya.webgl.canvas.WebGLContext2D;
+	import laya.webgl.shader.BaseShader;
 	import laya.webgl.shader.Shader;
 	import laya.webgl.shader.d2.value.Value2D;
-	import laya.webgl.utils.Buffer2D;
 	import laya.webgl.utils.CONST3D2D;
+	import laya.webgl.utils.IndexBuffer2D;
+	import laya.webgl.utils.VertexBuffer2D;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class SubmitTexture extends Submit {
 		private static var _cache:Array =/*[STATIC SAFE]*/ (_cache = [], _cache._length = 0, _cache);
 		
@@ -27,7 +21,7 @@ package laya.webgl.submit {
 		protected var _vbPos:Vector.<int> = new Vector.<int>;
 		public var _preIsSameTextureShader:Boolean = false;
 		public var _isSameTexture:Boolean = true;
-
+		
 		public function SubmitTexture(renderType:int = TYPE_2D) {
 			super(renderType);
 		}
@@ -39,6 +33,7 @@ package laya.webgl.submit {
 			_preIsSameTextureShader = false;
 			_vb = null;
 			_texs.length = 0;
+			_vbPos.length = 0;
 			_isSameTexture = true;
 		}
 		
@@ -60,7 +55,7 @@ package laya.webgl.submit {
 			var webGLImg:Bitmap = _tex.bitmap as Bitmap;
 			if (webGLImg === null) return;
 			
-			var vbdata: * = _vb.getFloat32Array();
+			var vbdata:* = _vb.getFloat32Array();
 			for (var i:int = 0, s:int = _texs.length; i < s; i++) {
 				var tex:Texture = _texs[i];
 				tex.active();
@@ -86,9 +81,14 @@ package laya.webgl.submit {
 			}
 		
 		}
-		private static var _shaderSet : Boolean = true;
+		private static var _shaderSet:Boolean = true;
+		
 		public override function renderSubmit():int {
-			if (_numEle === 0) return 1;
+			if (_numEle === 0)
+			{
+				_shaderSet = false;
+				return 1;
+			}
 			var _tex:Texture = shaderValue.textureHost;
 			if (_tex) {
 				var source:* = _tex.source;
@@ -112,8 +112,8 @@ package laya.webgl.submit {
 			Stat.drawCall++;
 			Stat.trianglesFaces += _numEle / 3;
 			
-			if (_preIsSameTextureShader && Shader.activeShader && _shaderSet )
-				Shader.activeShader.uploadTexture2D(shaderValue.texture);
+			if (_preIsSameTextureShader && BaseShader.activeShader && _shaderSet)
+				(BaseShader.activeShader as Shader).uploadTexture2D(shaderValue.texture);
 			else shaderValue.upload();
 			_shaderSet = true;
 			
@@ -122,7 +122,7 @@ package laya.webgl.submit {
 			{
 				var webGLImg:Bitmap = _tex.bitmap as Bitmap;
 				var index:int = 0;
-				var shader:Shader = Shader.activeShader;
+				var shader:Shader = BaseShader.activeShader as Shader;
 				for (var i:int = 0, s:int = _texs.length; i < s; i++) {
 					var tex2:Texture = _texs[i];
 					if (tex2.bitmap !== webGLImg || (i + 1) === s) {

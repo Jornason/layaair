@@ -1,4 +1,5 @@
 package laya.ani.swf {
+	import laya.display.Node;
 	import laya.display.Sprite;
 	import laya.events.Event;
 	import laya.maths.Matrix;
@@ -57,6 +58,8 @@ package laya.ani.swf {
 		protected var _count:int;
 		/**@private id_data起始位置表*/
 		public var _ids:Object;
+		/**@private */
+		protected var _loadedImage:Object = { };
 		/**@private id_实例表*/
 		public var _idOfSprite:Array;
 		/**@private 父mc*/
@@ -67,6 +70,17 @@ package laya.ani.swf {
 		protected var _labels:Object;
 		/**资源根目录。*/
 		public var basePath:String;
+		/**@private */
+		private var _atlasPath:String;
+		/**@private */
+		private var _url:String;
+		/**@private */
+		private var _isRoot:Boolean;
+		/**@private */
+		private var _completeHandler:Handler;
+		/**@private */
+		private var _endFrame:int=-1;
+		
 		/** 播放间隔(单位：毫秒)。*/
 		public var interval:int = 30;
 		/**是否循环播放 */
@@ -84,24 +98,37 @@ package laya.ani.swf {
 			this._parentMovieClip = parentMovieClip;
 			if (!parentMovieClip) {
 				_movieClipList = [this];
-				on(Event.DISPLAY, this, _onDisplay);
-				on(Event.UNDISPLAY, this, _onDisplay);
+				_isRoot = true;
+				_setUpNoticeType(Node.NOTICE_DISPLAY);
 			} else {
+				_isRoot = false;
 				_movieClipList = parentMovieClip._movieClipList;
 				_movieClipList.push(this);
-			}
+			}	
 		}
 		
-		/** @inheritDoc */
+		/**
+		 * <p>销毁此对象。以及销毁引用的Texture</p>
+		 * @param	destroyChild 是否同时销毁子节点，若值为true,则销毁子节点，否则不销毁子节点。
+		 */
 		override public function destroy(destroyChild:Boolean = true):void {
 			_clear();
 			super.destroy(destroyChild);
 		}
 		
 		/**@private */
-		private function _onDisplay():void {			
-			if (_displayedInStage) Laya.timer.loop(this.interval, this, updates, null, true);
-			else Laya.timer.clear(this, updates);		
+		override public function _setDisplay(value:Boolean):void 
+		{
+			super._setDisplay(value);
+			if (_isRoot)
+			{
+				_onDisplay(value);
+			}
+		}
+		/**@private */
+		private function _onDisplay(value:Boolean):void {			
+			if (value) timer.loop(this.interval, this, updates, null, true);
+			else timer.clear(this, updates);		
 		}
 		
 		/**@private 更新时间轴*/
@@ -184,6 +211,18 @@ package laya.ani.swf {
 			}
 			_parse(_playIndex);
 			if (_labels && _labels[_playIndex]) event(Event.LABEL, _labels[_playIndex]);
+			if (_endFrame!=-1&&_endFrame == _playIndex )
+			{
+				_endFrame = -1;
+				if (_completeHandler != null)
+				{
+					var handler:Handler = _completeHandler;
+					_completeHandler = null;	
+					handler.run();
+				}
+				stop();
+				
+			}
 		}
 		
 		/**
@@ -210,15 +249,28 @@ package laya.ani.swf {
 			stop();
 			_idOfSprite.length = 0;
 			if (!_parentMovieClip) {
-				Laya.timer.clear(this, updates);
+				timer.clear(this, updates);
 				var i:int, len:int;
 				len = _movieClipList.length;
 				for (i = 0; i < len; i++) {
 					if (_movieClipList[i] != this)
-						_movieClipList[i].clear();
+						_movieClipList[i]._clear();
 				}
 				_movieClipList.length = 0;
-			}		
+			}	
+			if (_atlasPath)
+			{
+				Loader.clearRes(_atlasPath);
+			}
+			var key:String;
+			for (key in _loadedImage)
+			{
+				if (_loadedImage[key])
+				{
+					Loader.clearRes(key);
+					_loadedImage[key] = false;
+				}
+			}
 			removeChildren();
 			graphics = null;
 			_parentMovieClip = null;
@@ -276,14 +328,10 @@ package laya.ani.swf {
 						var pid:int = _data.getUint16();
 						sp = _idOfSprite[key]
 						if (!sp) {
-							sp = _idOfSprite[key] = new Sprite();
-							//todo：优化方向
-							//sp.setSize(_data.getFloat32(),_data.getFloat32());
-							//var mat:Matrix=_data._getMatrix();
-							//sp.loadImage(basePath+pid+".png",mat);
-							
+							sp = _idOfSprite[key] = new Sprite();				
 							var spp:Sprite = new Sprite();
 							spp.loadImage(basePath + pid + ".png");
+							_loadedImage[basePath + pid + ".png"] = true;
 							sp.addChild(spp);
 							spp.size(_data.getFloat32(), _data.getFloat32());
 							var mat:Matrix = _data._getMatrix();
@@ -306,11 +354,16 @@ package laya.ani.swf {
 					_data.pos = _Pos;
 					break;
 				case 3: //addChild
-					(addChild(_idOfSprite[ /*key*/_data.getUint16()]) as Sprite).zOrder = _data.getUint16();
-					ifAdd = true;
+					var node:Sprite = _idOfSprite[ /*key*/_data.getUint16()];
+					if (node) {
+						addChild(node);
+						node.zOrder = _data.getUint16();
+						ifAdd = true;
+					}
 					break;
 				case 4: //remove
-					_idOfSprite[ /*key*/_data.getUint16()].removeSelf();
+					node = _idOfSprite[ /*key*/_data.getUint16()];
+					node && node.removeSelf();
 					break;
 				case 5: //setValue
 					_idOfSprite[_data.getUint16()][_ValueList[_data.getUint16()]] = (_data.getFloat32());
@@ -378,23 +431,34 @@ package laya.ani.swf {
 		/**
 		 * 加载资源。
 		 * @param	url swf 资源地址。
+		 * @param   atlas  是否使用图集资源
+		 * @param   atlasPath  图集路径，默认使用与swf同名的图集
 		 */
-		public function load(url:String):void {
-			url = URL.formatURL(url);
-			basePath = url.split(".swf")[0] + "/image/";
+		public function load(url:String,atlas:Boolean=false,atlasPath:String=null):void {
+			_url = url = URL.formatURL(url);
+			if(atlas) _atlasPath=atlasPath?atlasPath:url.split(".swf")[0] + ".json";	
 			stop();
 			_clear();
 			_movieClipList = [this];
-			var data:* = Loader.getRes(url);
-			if (data) {
-				_initData(data);
-			} else {
-				Laya.loader.load(url, Handler.create(this, _onLoaded), null, Loader.BUFFER);
+			var urls:Array;
+			urls = [ { url:url, type:Loader.BUFFER } ];
+			if (_atlasPath)
+			{
+				urls.push({ url:_atlasPath, type:Loader.ATLAS });
 			}
+			Laya.loader.load(urls, Handler.create(this, _onLoaded));
 		}
 		
 		/**@private */
-		private function _onLoaded(data:*=null):void {
+		private function _onLoaded():void {
+			var data:*;
+			data=Loader.getRes(_url);
+			if (!data)
+			{
+				event(Event.ERROR,"file not find");
+				return;
+			} 
+			this.basePath =_atlasPath?Loader.getAtlas(_atlasPath).dir:_url.split(".swf")[0] + "/image/";		
 			_initData(data);
 		}
 		
@@ -419,8 +483,20 @@ package laya.ani.swf {
 			_initState();	
 			play(0);
 			event(Event.LOADED);
-			if (!_parentMovieClip) Laya.timer.loop(this.interval, this, updates, null, true);
-			
+			if (!_parentMovieClip) timer.loop(this.interval, this, updates, null, true);			
+		}
+		
+		
+		/**
+		 * 从开始索引播放到结束索引，结束之后出发complete回调
+		 * @param	start	开始索引
+		 * @param	end		结束索引
+		 * @param	complete	结束回调
+		 */
+		public function playTo(start:int, end:int, complete:Handler=null):void {
+			_completeHandler = complete;
+			this._endFrame = end;
+			play(start, false);
 		}
 	}
 }

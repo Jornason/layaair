@@ -16,6 +16,11 @@
 				}
 			}
 		}
+		public function setUint8(pos : int, val : int,le:Boolean=false):void
+		{
+			_byteArr[pos] = val;
+		}
+
 		public function setInt16( idx : int,val:int,le : Boolean = false ) : void {
 			_byteArr.position = idx;
 			_byteArr.writeShort( val );
@@ -59,6 +64,10 @@
 		
 		public function setInt8( pos : int, val : int ) : void {
 			_byteArr[pos] = val;
+		}
+		
+		public function getInt8(pos:int):int{
+			return _byteArr[pos];
 		}
 		
 		public function getUint8( pos : int ) : uint {

@@ -67,7 +67,7 @@ package laya.debug.tools
 			trace(rst);
 			return rst;
 		}
-		public static function traceSize(tar:Sprite):void
+		public static function traceSize(tar:Object):void
 		{
 			DebugTool.dTrace("Size: x:"+tar.x+" y:"+tar.y+" w:"+tar.width+" h:"+tar.height+" scaleX:"+tar.scaleX+" scaleY:"+tar.scaleY);
 		}
@@ -193,12 +193,12 @@ package laya.debug.tools
 			{
 				trace("not Sprite");
 				return;
-			};
+			}
 			if(!tar) 
 			{
 				trace("null Sprite");
 				return;
-			};
+			}
 			traceSplit("traceSpriteInfo");
 //			trace("Sprite:"+tar.name);
 			DebugTool.dTrace(TraceTool.getClassName(tar)+":"+tar.name);
@@ -219,8 +219,6 @@ package laya.debug.tools
 			{
 				trace("bounds:"+tar.getBounds());
 			}
-			
-			
 		}
 	}
 }

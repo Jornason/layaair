@@ -14,12 +14,6 @@ package laya.ui {
 		/**@private */
 		protected var _itemChanged:Boolean = false;
 		
-		/**
-		 * 创建一个新的 <code>LayoutBox</code> 类实例。
-		 */
-		public function LayoutBox() {
-		}
-		
 		/** @inheritDoc	*/
 		override public function addChild(child:Node):Node {
 			child.on(Event.RESIZE, this, onResize);
@@ -89,8 +83,7 @@ package laya.ui {
 		 * @param items  项目列表。
 		 */
 		protected function sortItem(items:Array):void {
-			if (items) items.sort(function(a:*, b:*):Number { return a.y > b.y ? 1 : -1
-			});
+			if (items) items.sort(function(a:*, b:*):Number { return a.y - b.y;});
 		}
 		
 		protected function _setItemChanged():void {

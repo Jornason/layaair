@@ -1,13 +1,10 @@
-package laya.runtime 
-{
+package laya.runtime {
 	import laya.display.Graphics;
 	import laya.resource.Context;
 	/**
-	 * ...
-	 * @author hugao
+	 * @private
 	 */
-	public interface IConchNode 
-	{
+	public interface IConchNode {
 		/**@private */
 		function setRootNode():void;
 		/**@private */
@@ -27,7 +24,7 @@ package laya.runtime
 		/**@private */
 		function rotate(r:Number):void;
 		/**@private */
-		function  bgColor(bg:String):void;
+		function bgColor(bg:String):void;
 		/**@private */
 		function font(str:String):void;
 		/**@private */
@@ -63,6 +60,12 @@ package laya.runtime
 		function blurFilter(strength:Number):void;
 		/**@private */
 		function glowFilter(color:String, blur:Number, offX:Number, offY:Number):void;
+		/**@private */
+		function repaint():void;
+		/**@private */
+		function setZOrder(z:Number):void;
+		/**@private */
+		function updateZOrder():void;
 	}
 
 }

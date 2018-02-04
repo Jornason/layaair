@@ -1,18 +1,11 @@
-package laya.webgl.utils
-{
+package laya.webgl.utils {
+	import laya.renders.Render;
 	import laya.renders.Render;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
-	import laya.webgl.shader.Shader;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
-	public class VertexBuffer2D extends Buffer2D
-	{
-		public static var create:Function = function(vertexStride:int, bufferUsage:int = WebGLContext.DYNAMIC_DRAW):VertexBuffer2D
-		{
+	public class VertexBuffer2D extends Buffer2D {
+		public static var create:Function = function(vertexStride:int, bufferUsage:int = WebGLContext.DYNAMIC_DRAW):VertexBuffer2D {
 			return new VertexBuffer2D(vertexStride, bufferUsage);
 		}
 		
@@ -20,13 +13,11 @@ package laya.webgl.utils
 		
 		private var _vertexStride:int;
 		
-		public function get vertexStride():int
-		{
+		public function get vertexStride():int {
 			return _vertexStride;
 		}
 		
-		public function VertexBuffer2D(vertexStride:int, bufferUsage:int)
-		{
+		public function VertexBuffer2D(vertexStride:int, bufferUsage:int) {
 			super();
 			_vertexStride = vertexStride;
 			_bufferUsage = bufferUsage;
@@ -35,42 +26,47 @@ package laya.webgl.utils
 			getFloat32Array();
 		}
 		
-		public function getFloat32Array():*
-		{
+		public function getFloat32Array():* {
 			return _floatArray32 || (_floatArray32 = new Float32Array(_buffer));
 		}
 		
-		public function bind(ibBuffer:IndexBuffer2D):void
-		{
+		public function bind(ibBuffer:IndexBuffer2D):void {
 			(ibBuffer) && (ibBuffer._bind());
 			_bind();
 		}
 		
-		public function insertData(data:Array, pos:int):void
-		{
+		public function insertData(data:Array, pos:int):void {
 			var vbdata:* = getFloat32Array();
 			vbdata.set(data, pos);
 			_upload = true;
 		}
 		
-		public function bind_upload(ibBuffer:IndexBuffer2D):void
-		{
+		public function bind_upload(ibBuffer:IndexBuffer2D):void {
 			(ibBuffer._bind_upload()) || (ibBuffer._bind());
 			(_bind_upload()) || (_bind());
 		}
 		
-		override protected function _checkArrayUse():void
-		{
+		override protected function _checkArrayUse():void {
 			_floatArray32 && (_floatArray32 = new Float32Array(_buffer));
 		}
 		
-		override protected function detoryResource():void
-		{
-			super.detoryResource();
+		override protected function disposeResource():void {
+			super.disposeResource();
 			//if (_glBuffer) {
-			for (var i:int = 0; i < 10; i++)
+			var enableAtributes:Array = Buffer._enableAtributes;
+			for (var i:int = 0; i < 10; i++) {
 				WebGL.mainContext.disableVertexAttribArray(i);//临时修复警告和闪屏
+				enableAtributes[i] = null;
+			}
+		
 			//}
+		}
+		
+		public function destory():void {
+			_byteLength = 0;
+			_upload = true;
+			_buffer = null;
+			_floatArray32 = null;
 		}
 	
 	}

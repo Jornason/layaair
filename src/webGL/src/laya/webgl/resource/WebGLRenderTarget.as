@@ -1,14 +1,9 @@
 package laya.webgl.resource {
 	import laya.maths.Arith;
 	import laya.resource.Bitmap;
-	import laya.resource.Texture;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class WebGLRenderTarget extends Bitmap {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
 		private var _frameBuffer:*;
@@ -31,7 +26,7 @@ package laya.webgl.resource {
 			return _depthStencilBuffer;
 		}
 		
-		public function WebGLRenderTarget(width:int, height:int, surfaceFormat:int = WebGLContext.RGBA, surfaceType:int = WebGLContext.UNSIGNED_BYTE, depthStencilFormat:int = WebGLContext.DEPTH_COMPONENT16, mipMap:Boolean = false, repeat:Boolean = false, minFifter:int = -1, magFifter:int = 1) {
+		public function WebGLRenderTarget(width:int, height:int, surfaceFormat:int = WebGLContext.RGBA, surfaceType:int = WebGLContext.UNSIGNED_BYTE, depthStencilFormat:int = WebGLContext.DEPTH_STENCIL, mipMap:Boolean = false, repeat:Boolean = false, minFifter:int = -1, magFifter:int = 1) {
 			super();
 			_w = width;
 			_h = height;
@@ -45,7 +40,6 @@ package laya.webgl.resource {
 		}
 		
 		override protected function recreateResource():void {
-			startCreate();
 			var gl:WebGLContext = WebGL.mainContext;
 			_frameBuffer || (_frameBuffer = gl.createFramebuffer());
 			_source || (_source = gl.createTexture());
@@ -110,11 +104,11 @@ package laya.webgl.resource {
 			(preTarget && preTexture) && (WebGLContext.bindTexture(gl, preTarget, preTexture));
 			gl.bindRenderbuffer(WebGLContext.RENDERBUFFER, null);
 			memorySize = _w * _h * 4;
-			compoleteCreate();
+			completeCreate();
 		
 		}
 		
-		override protected function detoryResource():void {
+		override protected function disposeResource():void {
 			if (_frameBuffer) {
 				WebGL.mainContext.deleteTexture(_source);
 				WebGL.mainContext.deleteFramebuffer(_frameBuffer);

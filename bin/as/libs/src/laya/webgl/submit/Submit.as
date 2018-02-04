@@ -1,37 +1,34 @@
 package laya.webgl.submit {
 	import laya.resource.Texture;
-	import laya.webgl.submit.ISubmit;
 	import laya.utils.Stat;
-	import laya.webgl.utils.IndexBuffer2D;
-	import laya.webgl.utils.VertexBuffer2D;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
 	import laya.webgl.canvas.BlendMode;
 	import laya.webgl.canvas.WebGLContext2D;
 	import laya.webgl.shader.d2.value.Value2D;
+	import laya.webgl.submit.ISubmit;
 	import laya.webgl.utils.CONST3D2D;
+	import laya.webgl.utils.IndexBuffer2D;
+	import laya.webgl.utils.VertexBuffer2D;
 	
-	/**
-	 * ...
-	 * @author River
-	 */
 	public class Submit implements ISubmit {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
-		public static const TYPE_2D:int = 1;
-		public static const TYPE_CANVAS:int = 3;
-		public static const TYPE_CMDSETRT:int = 4;
-		public static const TYPE_CUSTOM:int = 5;
-		public static const TYPE_BLURRT:int = 6;
-		public static const TYPE_CMDDESTORYPRERT:int = 7;
-		public static const TYPE_DISABLESTENCIL:int = 8;
-		public static const TYPE_OTHERIBVB:int = 9;
-		public static const TYPE_PRIMITIVE:int = 10;
-		public static const TYPE_RT:int = 11;
-		public static const TYPE_BLUR_RT:int = 12;
-		public static const TYPE_TARGET:int = 13;
-		public static const TYPE_CHANGE_VALUE:int = 14;
-		public static const TYPE_SHAPE:int = 15;
-		public static const TYPE_TEXTURE:int = 16;
+		public static const TYPE_2D:int = 10000;
+		public static const TYPE_CANVAS:int = 10003;
+		public static const TYPE_CMDSETRT:int = 10004;
+		public static const TYPE_CUSTOM:int = 10005;
+		public static const TYPE_BLURRT:int = 10006;
+		public static const TYPE_CMDDESTORYPRERT:int = 10007;
+		public static const TYPE_DISABLESTENCIL:int = 10008;
+		public static const TYPE_OTHERIBVB:int = 10009;
+		public static const TYPE_PRIMITIVE:int = 10010;
+		public static const TYPE_RT:int = 10011;
+		public static const TYPE_BLUR_RT:int = 10012;
+		public static const TYPE_TARGET:int = 10013;
+		public static const TYPE_CHANGE_VALUE:int = 10014;
+		public static const TYPE_SHAPE:int = 10015;
+		public static const TYPE_TEXTURE:int = 10016;
+		public static const TYPE_FILLTEXTURE:int = 10017;
 		
 		public static var RENDERBASE:Submit;
 		
@@ -72,7 +69,7 @@ package laya.webgl.submit {
 		public function renderSubmit():int {
 			if (_numEle === 0) return 1;//怎么会有_numEle是0的情况?
 			var _tex:Texture = shaderValue.textureHost;
-			if (_tex) {	
+			if (_tex) {
 				var source:* = _tex.source;
 				if (!_tex.bitmap || !source)
 					return 1;
@@ -100,7 +97,7 @@ package laya.webgl.submit {
 		/*
 		   create方法只传对submit设置的值
 		 */
-		public static function create(context:WebGLContext2D, ib:IndexBuffer2D, vb:VertexBuffer2D, pos:int, sv:Value2D):Submit {
+		public static function createSubmit(context:WebGLContext2D, ib:IndexBuffer2D, vb:VertexBuffer2D, pos:int, sv:Value2D):Submit {
 			var o:Submit = _cache._length ? _cache[--_cache._length] : new Submit();
 			
 			if (vb == null) {

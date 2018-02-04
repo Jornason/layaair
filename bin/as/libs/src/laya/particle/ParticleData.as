@@ -26,7 +26,7 @@ package laya.particle {
 			
 		}
 		
-		public static function Create(settings:ParticleSettings, position:Float32Array, velocity:Float32Array, time:Number):ParticleData {
+		public static function Create(settings:ParticleSetting, position:Float32Array, velocity:Float32Array, time:Number):ParticleData {
 			var particleData:ParticleData = new ParticleData();
 			particleData.position = position;
 			
@@ -41,15 +41,29 @@ package laya.particle {
 			particleData.startColor = _tempStartColor;
 			particleData.endColor = _tempEndColor;
 			var i:int;
-			if (settings.colorComponentInter) {
+			if (settings.disableColor)
+			{
 				for (i = 0; i < 4; i++)
 				{
-					particleData.startColor[i] = MathUtil.lerp(settings.minStartColor[i], settings.maxStartColor[i], Math.random());//R、G、B、A插值
-					particleData.endColor[i] = MathUtil.lerp(settings.minEndColor[i], settings.maxEndColor[i], Math.random());//R、G、B、A插值
+					particleData.startColor[i] = 1;
+					particleData.endColor[i] = 1;
 				}
-			} else {
-				MathUtil.lerpVector4(settings.minStartColor, settings.maxStartColor, Math.random(), particleData.startColor);//RGBA统一插值
-				MathUtil.lerpVector4(settings.minEndColor, settings.maxEndColor, Math.random(), particleData.endColor);//RGBA统一插值
+				//particleData.startColor[i] = MathUtil.lerp(settings.minStartColor[i], settings.maxStartColor[i], Math.random());//R、G、B、A插值
+				//particleData.endColor[i] = MathUtil.lerp(settings.minEndColor[i], settings.maxEndColor[i], Math.random());//R、G、B、A插值
+				
+			}
+			else
+			{
+				if (settings.colorComponentInter) {
+					for (i = 0; i < 4; i++)
+					{
+						particleData.startColor[i] = MathUtil.lerp(settings.minStartColor[i], settings.maxStartColor[i], Math.random());//R、G、B、A插值
+						particleData.endColor[i] = MathUtil.lerp(settings.minEndColor[i], settings.maxEndColor[i], Math.random());//R、G、B、A插值
+					}
+				} else {
+					MathUtil.lerpVector4(settings.minStartColor, settings.maxStartColor, Math.random(), particleData.startColor);//RGBA统一插值
+					MathUtil.lerpVector4(settings.minEndColor, settings.maxEndColor, Math.random(), particleData.endColor);//RGBA统一插值
+				}
 			}
 			
 			particleData.sizeRotation =_tempSizeRotation;

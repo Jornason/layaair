@@ -5,7 +5,6 @@ package laya.particle
 	import laya.resource.Texture;
 	import laya.utils.Handler;
 	import laya.utils.Stat;
-	import laya.utils.Timer;
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
 	import laya.webgl.canvas.BlendMode;
@@ -33,7 +32,7 @@ package laya.particle
 		
 
 		
-		public function ParticleTemplate2D(parSetting:ParticleSettings)
+		public function ParticleTemplate2D(parSetting:ParticleSetting)
 		{
 			super(parSetting);
 			var _this:ParticleTemplate2D = this;
@@ -112,7 +111,7 @@ package laya.particle
 		{
 			if (texture&&texture.loaded)
 			{
-				update(Timer.delta);
+				update(Laya.timer.delta);
 				sv.u_CurrentTime=_currentTime;
 				if (_firstNewElement != _firstFreeElement)
 				{
@@ -160,7 +159,7 @@ package laya.particle
 		
 		public function dispose():void
 		{
-			_vertexBuffer2D.dispose();
+			//_vertexBuffer2D.dispose();
 			_indexBuffer2D.dispose();
 		}
 	}

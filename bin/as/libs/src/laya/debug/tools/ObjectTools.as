@@ -137,6 +137,13 @@ package laya.debug.tools
 				delete obj[key];
 			}
 		}
+		public static function copyObjFast(obj:Object):Object
+		{
+			var jsStr:String;
+			jsStr=ObjectTools.getJsonString(obj);
+			return ObjectTools.getObj(jsStr);
+			
+		}
 		public static function copyObj(obj:Object):Object
 		{
 			if(obj is Array) return copyArr(obj as Array);
@@ -144,6 +151,10 @@ package laya.debug.tools
 			var key:String;
 			for(key in obj)
 			{
+				if(obj[key]===null||obj[key]===undefined)
+				{
+					rst[key]=obj[key];
+				}else
 				if(obj[key] is Array)
 				{
 					rst[key]=copyArr(obj[key]);
@@ -180,13 +191,46 @@ package laya.debug.tools
 			}
 			return src;
 		}
-		
+		public static function insertArrToArr(src:Array, insertArr:Array, pos:int = 0):Array
+		{
+			if (pos < 0) pos = 0;
+			if (pos > src.length) pos = src.length;
+			var preLen:int = src.length;
+			var i:int, len:int;
+			src.length += insertArr.length;
+			var moveLen:int;
+			moveLen = insertArr.length;
+			for (i = src.length - 1; i >= pos; i--)
+			{
+				src[i] = src[i - moveLen];
+			}
+			len = insertArr.length;
+			for (i = 0; i < len; i++)
+			{
+				src[pos + i] = insertArr[i];
+			}
+			
+			return src;
+		}
 		public static function clearArr(arr:Array):Array {
 			if (!arr) return arr;
 			arr.length = 0;
 			return arr;
 		}
 		
+		public static function removeFromArr(arr:Array,item:*):void
+		{
+			var i:int,len:int;
+			len=arr.length;
+			for(i=0;i<len;i++)
+			{
+				if(arr[i]==item)
+				{
+					arr[i].splice(i,1);
+					return;
+				}
+			}
+		}
 		public static function setValueArr(src:Array, v:Array):Array {
 			src || (src = []);
 			src.length = 0;
@@ -239,6 +283,18 @@ package laya.debug.tools
 			}
 			return rst;
 		}
+		public static function getObjValues(dataList:Array,key:String):Array
+		{
+			var rst:Array;
+			var i:int,len:int;
+			len=dataList.length;
+			rst=[];
+			for(i=0;i<len;i++)
+			{
+				rst.push(dataList[i][key]);
+			}
+			return rst;
+		}
 		public static function hasKeys(obj:Object,keys:Array):Boolean
 		{
 			var i:int,len:int;
@@ -257,6 +313,23 @@ package laya.debug.tools
 				if(!(src[keys[i]]===null))
 					tar[keys[i]]=src[keys[i]];
 			}
+		}
+		public static function getNoSameArr(arr:Array):Array
+		{
+			var i:int, len:int;
+			var rst:Array;
+			rst = [];
+			var tItem:Object;
+			len = arr.length;
+			for (i = 0; i < len; i++)
+			{
+				tItem = arr[i];
+				if (rst.indexOf(tItem) < 0)
+				{
+					rst.push(tItem);
+				}
+			}
+			return rst;
 		}
 		public static function insertValue(tar:Object, src:Object):void
 		{
@@ -327,16 +400,46 @@ package laya.debug.tools
 		}
 		public static function getAutoValue(value:*):*
 		{
-			if (parseFloat(value)==value) return parseFloat(value);
+			var tFloat:Number=parseFloat(value);
+			if(typeof(value)=="string")
+			{
+				if(tFloat+""===StringTool.trimSide(value)) return tFloat;
+			}
+//			if (parseFloat(value)==value) return parseFloat(value);
 			return value;
 		}
 		public static function isNumber(value:*):Boolean
 		{
 			return  (parseFloat(value)==value);
 		}
+		public static function isNaNS(value:*):Boolean
+		{
+			return ( value.toString()=="NaN");
+		}
 		public static function isNaN(value:*):Boolean
 		{
-			return value.toString()=="NaN";
+			if(typeof(value)=="number") return false;
+			if(typeof(value)=="string")
+			{
+				if(parseFloat(value).toString()!="NaN")
+				{
+					if(parseFloat(value)==value)
+					{
+						return false;
+					}
+				}
+			}
+			return true;
+//			if(value===undefined) return true;
+//			if(value ===null) return true;
+//			if( value.toString()=="NaN") return true;
+//			if(value===true) return false;
+//			if(value ===false) return false;
+//			if(value is String)
+//			{
+//				if(parseFloat(value)==value) return false;
+//			}
+//			return true;
 			//			return !isNumber(value);
 		}
 		public static function getStrTypedValue(value:String):*

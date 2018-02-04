@@ -26,7 +26,8 @@ package laya.filters {
 				WebGLFilter.enable();
 			}
 			this._color = new Color(color);
-			this.blur = blur;
+			//限制最大效果为20
+			this.blur = Math.min(blur, 20);
 			this.offX = offX;
 			this.offY = offY;
 			_action = RunDriver.createFilterAction(GLOW);
@@ -85,7 +86,7 @@ package laya.filters {
 		 */
 		public override function callNative(sp:Sprite):void
 		{
-			sp.model &&sp.model.glowFilter&&sp.model.glowFilter(_color.strColor, _elements[4], _elements[5], _elements[6]);
+			sp.conchModel &&sp.conchModel.glowFilter&&sp.conchModel.glowFilter(_color.strColor, _elements[4], _elements[5], _elements[6]);
 		}
 	
 	}

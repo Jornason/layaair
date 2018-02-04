@@ -2,8 +2,8 @@ package laya.media.h5audio {
 	import laya.events.Event;
 	import laya.media.SoundChannel;
 	import laya.media.SoundManager;
+	import laya.renders.Render;
 	import laya.utils.Browser;
-	import laya.utils.Handler;
 	import laya.utils.Pool;
 	import laya.utils.Utils;
 	
@@ -41,12 +41,13 @@ package laya.media.h5audio {
 			if (this.loops > 0) {
 				this.loops--;
 			}
+			this.startTime = 0;
 			this.play();
 		}
 		
 		private function __resumePlay():void {		
+			if(_audio) _audio.removeEventListener("canplay", _resumePlay);
 			try {
-				_audio.removeEventListener("canplay", _resumePlay);
 				_audio.currentTime = this.startTime;
 				Browser.container.appendChild(_audio);
 				_audio.play();
@@ -60,13 +61,17 @@ package laya.media.h5audio {
 		 * 播放
 		 */
 		override public function play():void {
+			this.isStopped = false;
 			try {
+				_audio.playbackRate = SoundManager.playbackRate;
 				_audio.currentTime = this.startTime;
 			} catch (e:*) {
 				_audio.addEventListener("canplay", _resumePlay);
 				return;
 			}
+			SoundManager.addChannel(this);
 			Browser.container.appendChild(_audio);
+			if("play" in _audio)
 			_audio.play();
 		}
 		
@@ -82,6 +87,16 @@ package laya.media.h5audio {
 		}
 		
 		/**
+		 * 获取总时间。
+		 */
+		override public function get duration():Number 
+		{
+			if (!_audio)
+				return 0;
+			return _audio.duration;
+		}
+		
+		/**
 		 * 停止播放
 		 *
 		 */
@@ -92,13 +107,43 @@ package laya.media.h5audio {
 			completeHandler = null;
 			if (!_audio)
 				return;
+			if ("pause" in _audio)
+			//理论上应该全部使用stop，但是不知为什么，使用pause，为了安全我只修改在加速器模式下再调用一次stop
+			if ( Render.isConchApp ){
+				_audio.stop();
+			}
 			_audio.pause();
 			_audio.removeEventListener("ended", _onEnd);
 			_audio.removeEventListener("canplay", _resumePlay);
-			Pool.recover("audio:" + url, _audio);
+			//ie下使用对象池可能会导致后面的声音播放不出来
+			if (!Browser.onIE)
+			{
+				if (_audio!=AudioSound._musicAudio)
+				{
+					Pool.recover("audio:" + url, _audio);
+				}
+			}		
 			Browser.removeElement(_audio);
 			_audio = null;
 		
+		}
+		
+		override public function pause():void 
+		{
+			this.isStopped = true;
+			SoundManager.removeChannel(this);
+			if("pause" in _audio)
+			_audio.pause();
+		}
+		
+		override public function resume():void 
+		{		
+			if (!_audio)
+				return;
+			this.isStopped = false;
+			SoundManager.addChannel(this);
+			if("play" in _audio)
+			_audio.play();
 		}
 		
 		/**

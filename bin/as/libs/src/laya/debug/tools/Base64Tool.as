@@ -1,7 +1,7 @@
 package laya.debug.tools
 {
 	import laya.utils.Byte;
-	
+
 	/**
 	 * base64编码解码类
 	 * @author ww
@@ -13,7 +13,7 @@ package laya.debug.tools
 		{
 		
 		}
-		public static var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		public static var chars:String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 		
 		// Use a lookup table to find the index.
 		public static var lookup:Uint8Array = null;
@@ -60,6 +60,7 @@ package laya.debug.tools
 		}
 		/**
 		 * 编码字符串 
+		 * 编码时会在最前面加上字符串长度
 		 * @param str
 		 * @return 
 		 * 
@@ -69,6 +70,20 @@ package laya.debug.tools
 			var byte:Byte;
 			byte = new Byte();
 			byte.writeUTFString(str);
+			return encodeByte(byte);
+		}
+		
+		/**
+		 * 编码字符串 
+		 * @param str
+		 * @return 
+		 * 
+		 */
+		public static function encodeStr2(str:String):String
+		{
+			var byte:Byte;
+			byte = new Byte();
+			byte.writeUTFBytes(str);
 			return encodeByte(byte);
 		}
 		/**

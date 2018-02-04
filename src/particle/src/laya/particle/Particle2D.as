@@ -6,6 +6,7 @@ package laya.particle {
 	import laya.renders.Render;
 	import laya.renders.RenderContext;
 	import laya.renders.RenderSprite;
+	import laya.resource.Texture;
 	import laya.utils.Handler;
 	
 	/**
@@ -28,7 +29,7 @@ package laya.particle {
 		 * 创建一个新的 <code>Particle2D</code> 类实例。
 		 * @param setting 粒子配置数据
 		 */
-		public function Particle2D(setting:ParticleSettings) {
+		public function Particle2D(setting:ParticleSetting) {
 			if (setting) setParticleSetting(setting);
 		}
 		
@@ -52,15 +53,36 @@ package laya.particle {
 		 * 设置粒子配置数据
 		 * @param settings 粒子配置数据
 		 */
-		public function setParticleSetting(setting:ParticleSettings):void {
+		public function setParticleSetting(setting:ParticleSetting):void {
 			if (!setting) return stop();
-			ParticleSettings.checkSetting(setting);
+			ParticleSetting.checkSetting(setting);
 			//_renderType |= RenderSprite.CUSTOM;
-			customRenderEnable = true;//设置custom渲染
+			if(__JS__("!window.ConchParticleTemplate2D")||Render.isWebGL)customRenderEnable = true;//设置custom渲染
 			if (Render.isWebGL) {
 				_particleTemplate = new ParticleTemplate2D(setting);
 				this.graphics._saveToCmd(Render.context._drawParticle, [_particleTemplate]);
-			} else {
+			}
+			else if (Render.isConchApp&&__JS__("window.ConchParticleTemplate2D")) {
+				_particleTemplate = __JS__("new ConchParticleTemplate2D()");
+				var _this:Particle2D = this;
+				Laya.loader.load(setting.textureName, Handler.create(null, function(texture:Texture):void{
+						__JS__("_this._particleTemplate.texture = texture");
+						_this._particleTemplate.settings = setting;
+						if (Render.isConchNode){
+							__JS__("_this.graphics.drawParticle(_this._particleTemplate)");
+						}
+						else{
+							_this.graphics._saveToCmd(Render.context._drawParticle, [_particleTemplate]);
+						}
+					})
+				);
+				_emitter = { start:function():void{ }} as EmitterBase;
+				__JS__("this.play =this._particleTemplate.play.bind(this._particleTemplate)");
+				__JS__("this.stop =this._particleTemplate.stop.bind(this._particleTemplate)");
+				if (autoPlay) play();
+				return;
+			}
+			else {
 				_particleTemplate = _canvasTemplate = new ParticleTemplateCanvas(setting);
 			}
 			if (!_emitter) {
@@ -85,14 +107,14 @@ package laya.particle {
 		 * 播放
 		 */
 		public function play():void {
-			Laya.timer.frameLoop(1, this, _loop);
+			timer.frameLoop(1, this, _loop);
 		}
 		
 		/**
 		 * 停止
 		 */
 		public function stop():void {
-			Laya.timer.clear(this, _loop);
+			timer.clear(this, _loop);
 		}
 		
 		/**@private */

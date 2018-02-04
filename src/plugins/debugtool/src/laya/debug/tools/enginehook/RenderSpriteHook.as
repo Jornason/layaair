@@ -61,15 +61,20 @@ package laya.debug.tools.enginehook
 			
 		}
 		public static var I:RenderSpriteHook;
+		public static var _preCreateFun:Function;
 		public static function init():void
 		{
+			if (I) return;
 			I = new RenderSpriteHook();
+			_preCreateFun = RunDriver.createRenderSprite;
 			RunDriver.createRenderSprite = I.createRenderSprite;
 		}
 		public function createRenderSprite(type:int, next:RenderSprite):RenderSprite 
 		{
+			
 			var rst:RenderSprite;
-			rst = new RenderSprite(type, next);
+			rst = _preCreateFun(type, next);
+			
 			if (type == RenderSprite.CANVAS)
 			{
 				rst["_oldCanvas"] = rst._fun;
@@ -93,7 +98,10 @@ package laya.debug.tools.enginehook
 			var tx:RenderContext = _cacheCanvas.ctx;
 			var _repaint:Boolean = sprite._needRepaint() || (!tx);
 			_oldCanvas(sprite, context, x, y);
-			
+			if (Config.showCanvasMark) 
+			{
+				
+			}
 			if (_repaint)
 			{
 				CacheAnalyser.I.reCacheCanvas(sprite,Browser.now()-preTime);

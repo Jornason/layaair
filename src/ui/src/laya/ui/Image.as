@@ -15,8 +15,9 @@ package laya.ui {
 	
 	/**
 	 * <code>Image</code> 类是用于表示位图图像或绘制图形的显示对象。
-	 * @example 以下示例代码，创建了一个新的 <code>Image</code> 实例，设置了它的皮肤、位置信息，并添加到舞台上。
-	 * <listing version="3.0">
+	 * Image和Clip组件是唯一支持异步加载的两个组件，比如img.skin = "abc/xxx.png"，其他UI组件均不支持异步加载。
+	 * 
+	 * @example <caption>以下示例代码，创建了一个新的 <code>Image</code> 实例，设置了它的皮肤、位置信息，并添加到舞台上。</caption>
 	 *	package
 	 *	 {
 	 *		import laya.ui.Image;
@@ -44,8 +45,7 @@ package laya.ui {
 	 *			}
 	 *		}
 	 *	 }
-	 * </listing>
-	 * <listing version="3.0">
+	 * @example
 	 * Laya.init(640, 800);//设置游戏画布宽高
 	 * Laya.stage.bgColor = "#efefef";//设置画布的背景颜色
 	 * onInit();
@@ -62,8 +62,7 @@ package laya.ui {
 	 *     image.y = 100;//设置 image 对象的属性 y 的值，用于控制 image 对象的显示位置。
 	 *     Laya.stage.addChild(image);//将此 image 对象添加到显示列表。
 	 * }
-	 * </listing>
-	 * <listing version="3.0">
+	 * @example
 	 * class Image_Example {
 	 *     constructor() {
 	 *         Laya.init(640, 800);//设置游戏画布宽高。
@@ -84,7 +83,6 @@ package laya.ui {
 	 *         Laya.stage.addChild(image);//将此 image 对象添加到显示列表。
 	 *     }
 	 * }
-	 * </listing>
 	 * @see laya.ui.AutoBitmap
 	 */
 	public class Image extends Component {
@@ -92,6 +90,8 @@ package laya.ui {
 		public var _bitmap:AutoBitmap;
 		/**@private */
 		protected var _skin:String;
+		/**@private */
+		protected var _group:String;
 		
 		/**
 		 * 创建一个 <code>Image</code> 实例。
@@ -139,7 +139,7 @@ package laya.ui {
 					if (source) {
 						this.source = source;
 						onCompResize();
-					} else Laya.loader.load(_skin, Handler.create(this, setSource, [_skin]), null, Loader.IMAGE);
+					} else Laya.loader.load(_skin, Handler.create(this, setSource, [_skin]), null, Loader.IMAGE,1,true,_group);
 				} else {
 					this.source = null;
 				}
@@ -153,7 +153,7 @@ package laya.ui {
 			return _bitmap.source;
 		}
 		
-		public function set source(value:*):void {
+		public function set source(value:Texture):void {
 			if (!_bitmap) return;
 			_bitmap.source = value;
 			event(Event.LOADED);
@@ -161,12 +161,27 @@ package laya.ui {
 		}
 		
 		/**
+		 * 资源分组。
+		 */
+		public function get group():String
+		{
+			return _group;
+		}
+		
+		public function set group(value:String):void
+		{
+			if (value && _skin) Loader.setGroup(_skin, value);
+			_group = value;
+		}
+		/**
 		 * @private
 		 * 设置皮肤资源。
 		 */
-		protected function setSource(url:String, value:*):void {
-			url === _skin && (this.source = value);
-			onCompResize();
+		protected function setSource(url:String, img:*=null):void {
+			if (url === _skin && img) {
+				this.source = img
+				onCompResize();
+			}
 		}
 		
 		/**@inheritDoc */

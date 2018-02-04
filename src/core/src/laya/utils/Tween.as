@@ -1,15 +1,17 @@
 package laya.utils {
-	/*[IF-FLASH]*/import flash.utils.Dictionary;
-	
+	/*[IF-FLASH]*/
+	import flash.utils.Dictionary;
 	import laya.display.Node;
+	
 	/**
-	 * <code>Tween</code>  是一个缓动类。使用实现目标对象属性的渐变。
+	 * <code>Tween</code>  是一个缓动类。使用此类能够实现对目标对象属性的渐变。
 	 */
 	public class Tween {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
 		
 		/**@private */
-		/*[IF-FLASH]*/ private static var tweenMap:flash.utils.Dictionary = new flash.utils.Dictionary(true);
+		/*[IF-FLASH]*/
+		private static var tweenMap:flash.utils.Dictionary = new flash.utils.Dictionary(true);
 		//[IF-JS] private static var tweenMap:Array = {};
 		/**@private */
 		private var _complete:Handler;
@@ -37,7 +39,7 @@ package laya.utils {
 		/**
 		 * 缓动对象的props属性到目标值。
 		 * @param	target 目标对象(即将更改属性值的对象)。
-		 * @param	props 变化的属性列表，比如{x:100,y:20}。
+		 * @param	props 变化的属性列表，比如{x:100,y:20,ease:Ease.backOut,complete:Handler.create(this,onComplete),update:new Handler(this,onComplete)}。
 		 * @param	duration 花费的时间，单位毫秒。
 		 * @param	ease 缓动类型，默认为匀速运动。
 		 * @param	complete 结束回调函数。
@@ -53,7 +55,7 @@ package laya.utils {
 		/**
 		 * 从props属性，缓动到当前状态。
 		 * @param	target 目标对象(即将更改属性值的对象)。
-		 * @param	props 变化的属性列表，比如{x:100,y:20}。
+		 * @param	props 变化的属性列表，比如{x:100,y:20,ease:Ease.backOut,complete:Handler.create(this,onComplete),update:new Handler(this,onComplete)}。
 		 * @param	duration 花费的时间，单位毫秒。
 		 * @param	ease 缓动类型，默认为匀速运动。
 		 * @param	complete 结束回调函数。
@@ -69,7 +71,7 @@ package laya.utils {
 		/**
 		 * 缓动对象的props属性到目标值。
 		 * @param	target 目标对象(即将更改属性值的对象)。
-		 * @param	props 变化的属性列表，比如{x:100,y:20}。
+		 * @param	props 变化的属性列表，比如{x:100,y:20,ease:Ease.backOut,complete:Handler.create(this,onComplete),update:new Handler(this,onComplete)}。
 		 * @param	duration 花费的时间，单位毫秒。
 		 * @param	ease 缓动类型，默认为匀速运动。
 		 * @param	complete 结束回调函数。
@@ -84,7 +86,7 @@ package laya.utils {
 		/**
 		 * 从props属性，缓动到当前状态。
 		 * @param	target 目标对象(即将更改属性值的对象)。
-		 * @param	props 变化的属性列表，比如{x:100,y:20}。
+		 * @param	props 变化的属性列表，比如{x:100,y:20,ease:Ease.backOut,complete:Handler.create(this,onComplete),update:new Handler(this,onComplete)}。
 		 * @param	duration 花费的时间，单位毫秒。
 		 * @param	ease 缓动类型，默认为匀速运动。
 		 * @param	complete 结束回调函数。
@@ -100,7 +102,7 @@ package laya.utils {
 		public function _create(target:*, props:Object, duration:int, ease:Function, complete:Handler, delay:int, coverBefore:Boolean, isTo:Boolean, usePool:Boolean, runNow:Boolean):Tween {
 			if (!target) throw new Error("Tween:target is null");
 			this._target = target;
-			this._duration = duration||props.duration||0;
+			this._duration = duration;
 			this._ease = ease || props.ease || easeNone;
 			this._complete = complete || props.complete;
 			this._delay = delay;
@@ -112,7 +114,8 @@ package laya.utils {
 			
 			//判断是否覆盖			
 			//[IF-JS]var gid:int = (target.$_GID || (target.$_GID = Utils.getGID()));
-			/*[IF-FLASH]*/var gid:* = target;
+			/*[IF-FLASH]*/
+			var gid:* = target;
 			if (!tweenMap[gid]) {
 				tweenMap[gid] = [this];
 			} else {
@@ -122,7 +125,7 @@ package laya.utils {
 			
 			if (runNow) {
 				if (delay <= 0) firstStart(target, props, isTo);
-				else Laya.timer.once(delay, this, firstStart, [target, props, isTo]);
+				else Laya.scaleTimer.once(delay, this, firstStart, [target, props, isTo]);
 			} else {
 				_initProps(target, props, isTo);
 			}
@@ -130,6 +133,10 @@ package laya.utils {
 		}
 		
 		private function firstStart(target:*, props:Object, isTo:Boolean):void {
+			if (target.destroyed) {
+				this.clear();
+				return;
+			}
 			_initProps(target, props, isTo);
 			_beginLoop();
 		}
@@ -141,12 +148,13 @@ package laya.utils {
 					var start:Number = isTo ? target[p] : props[p];
 					var end:Number = isTo ? props[p] : target[p];
 					this._props.push([p, start, end - start]);
+					if (!isTo) target[p] = start;
 				}
 			}
 		}
 		
 		private function _beginLoop():void {
-			Laya.timer.frameLoop(1, this, _doEase);
+			Laya.scaleTimer.frameLoop(1, this, _doEase);
 		}
 		
 		/**执行缓动**/
@@ -157,9 +165,11 @@ package laya.utils {
 		/**@private */
 		public function _updateEase(time:Number):void {
 			var target:* = this._target;
+			if (!target) return;
 			
 			//如果对象被销毁，则立即停止缓动
-			/*[IF-FLASH]*/if (target is Node && target.destroyed) return clearTween(target);
+			/*[IF-FLASH]*/
+			if (target is Node && target.destroyed) return clearTween(target);
 			//[IF-JS]if (target.destroyed) return clearTween(target);
 			
 			var usedTimer:Number = this._usedTimer = time - this._startTimer - this._delay;
@@ -176,10 +186,9 @@ package laya.utils {
 		}
 		
 		/**设置当前执行比例**/
-		public function set progress(v:Number):void
-		{
-			var uTime:Number=v*_duration;
-			this._startTimer=Browser.now()-this._delay-uTime;
+		public function set progress(v:Number):void {
+			var uTime:Number = v * _duration;
+			this._startTimer = Browser.now() - this._delay - uTime;
 		}
 		
 		/**
@@ -187,10 +196,14 @@ package laya.utils {
 		 */
 		public function complete():void {
 			if (!this._target) return;
+			
+			//立即执行初始化
+			Laya.scaleTimer.runTimer(this, firstStart);
+			
 			//缓存当前属性
 			var target:* = this._target;
 			var props:* = this._props;
-			var handler:Handler = this._complete;			
+			var handler:Handler = this._complete;
 			//设置终点属性
 			for (var i:int, n:int = props.length; i < n; i++) {
 				var prop:Array = props[i];
@@ -207,8 +220,8 @@ package laya.utils {
 		 * 暂停缓动，可以通过resume或restart重新开始。
 		 */
 		public function pause():void {
-			Laya.timer.clear(this, _beginLoop);
-			Laya.timer.clear(this, _doEase);
+			Laya.scaleTimer.clear(this, _beginLoop);
+			Laya.scaleTimer.clear(this, _doEase);
 		}
 		
 		/**
@@ -224,9 +237,11 @@ package laya.utils {
 		 * @param	target 目标对象。
 		 */
 		public static function clearAll(target:Object):void {
-			/*[IF-FLASH]*/if (!target)return;
+			/*[IF-FLASH]*/
+			if (!target) return;
 			//[IF-JS]if (!target || !target.$_GID) return;
-			/*[IF-FLASH]*/var tweens:Array = tweenMap[target];
+			/*[IF-FLASH]*/
+			var tweens:Array = tweenMap[target];
 			//[IF-JS]var tweens:Array = tweenMap[target.$_GID];
 			if (tweens) {
 				for (var i:int, n:int = tweens.length; i < n; i++) {
@@ -264,7 +279,7 @@ package laya.utils {
 		 */
 		public function _clear():void {
 			pause();
-			Laya.timer.clear(this, firstStart);
+			Laya.scaleTimer.clear(this, firstStart);
 			this._complete = null;
 			this._target = null;
 			this._ease = null;
@@ -283,7 +298,8 @@ package laya.utils {
 		}
 		
 		private function _remove():void {
-			/*[IF-FLASH]*/var tweens:Array = tweenMap[this._target];
+			/*[IF-FLASH]*/
+			var tweens:Array = tweenMap[this._target];
 			//[IF-JS]var tweens:Array = tweenMap[this._target.$_GID];
 			if (tweens) {
 				for (var i:int, n:int = tweens.length; i < n; i++) {
@@ -307,7 +323,7 @@ package laya.utils {
 				var prop:Array = props[i];
 				this._target[prop[0]] = prop[1];
 			}
-			Laya.timer.once(this._delay, this, _beginLoop);
+			Laya.scaleTimer.once(this._delay, this, _beginLoop);
 		}
 		
 		/**

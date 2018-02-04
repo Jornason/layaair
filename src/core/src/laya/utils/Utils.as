@@ -1,8 +1,13 @@
 package laya.utils {
-	import laya.display.Node;
 	import laya.display.Sprite;
+	import laya.display.Stage;
+	import laya.maths.Matrix;
 	import laya.maths.Point;
 	import laya.maths.Rectangle;
+	import laya.renders.Render;
+	import laya.renders.RenderContext;
+	import laya.resource.Texture;
+	import laya.runtime.IConchNode;
 	
 	/**
 	 * <code>Utils</code> 是工具类。
@@ -14,6 +19,8 @@ package laya.utils {
 		private static var _pi:Number = /*[STATIC SAFE]*/ 180 / Math.PI;
 		/**@private */
 		private static var _pi2:Number = /*[STATIC SAFE]*/ Math.PI / 180;
+		/**@private */
+		protected static var _extReg:RegExp =/*[STATIC SAFE]*/ /\.(\w+)\??/g;
 		
 		/**
 		 * 角度转弧度。
@@ -59,8 +66,7 @@ package laya.utils {
 			var rst:*;
 			value = value.replace(/>\s+</g, '><');
 			__JS__("rst=(new DOMParser()).parseFromString(value,'text/xml')");
-			if (rst.firstChild.textContent.indexOf("This page contains the following errors") > -1)
-			{
+			if (rst.firstChild.textContent.indexOf("This page contains the following errors") > -1) {
 				throw new Error(rst.firstChild.firstChild.textContent);
 			}
 			return rst;
@@ -103,13 +109,13 @@ package laya.utils {
 		 * @param	array 新的数组值。
 		 * @return 	复制后的数据 source 。
 		 */
-		public static function copyArray(source:Array, array:Array):Array {		
+		public static function copyArray(source:Array, array:Array):Array {
 			source || (source = []);
 			if (!array) return source;
 			source.length = array.length;
 			var i:int, len:int = array.length;
 			for (i = 0; i < len; i++) {
-				source[i]=array[i];
+				source[i] = array[i];
 			}
 			return source;
 		}
@@ -151,7 +157,7 @@ package laya.utils {
 		 * @return 绑定后的函数。
 		 */
 		public static function bind(fun:Function, scope:*):Function {
-			var rst:Function;
+			var rst:Function = fun;
 			__JS__("rst=fun.bind(scope);");
 			return rst;
 		}
@@ -169,50 +175,37 @@ package laya.utils {
 		/**
 		 * @private
 		 * 对传入的数组列表，根据子项的属性 Z 值进行重新排序。返回是否已重新排序的 Boolean 值。
-		 * @param	childs 子对象数组。
-		 * @return Boolean 值，表示是否已重新排序。
+		 * @param	array 子对象数组。
+		 * @return	Boolean 值，表示是否已重新排序。
 		 */
-		public static function updateOrder(childs:Array):Boolean {
-			if ( (!childs) || childs.length < 2) return false;
-			
-			var c:Sprite = childs[0];
-			var i:int = 1, sz:int = childs.length;
-			var z:Number = c._zOrder, low:Number, high:Number, mid:Number, zz:Number;
-			var repaint:Boolean = false;
-			
-			for (i = 1; i < sz; i++) {
-				c = childs[i] as Sprite;
-				if (!c) continue;
-				if ((z = c._zOrder) < 0) z = c._zOrder;
-				if (z < childs[i - 1]._zOrder)//如果z小于前面，找到z>=的位置插入
-				{
-					mid = low = 0;
-					high = i - 1;
-					while (low <= high) {
-						mid = (low + high) >>> 1;
-						if (!childs[mid]) break;//这里有问题
-						zz = childs[mid]._zOrder;
-						if (zz < 0) zz = childs[mid]._zOrder;
-						
-						if (zz < z)
-							low = mid + 1;
-						else if (zz > z)
-							high = mid - 1;
-						else break;
+		public static function updateOrder(array:Array):Boolean {
+			if (!array || array.length < 2) return false;
+			var i:int = 1, j:int, len:int = array.length, key:Number, c:Sprite;
+			while (i < len) {
+				j = i;
+				c = array[j];
+				key = array[j]._zOrder;
+				while (--j > -1) {
+					if (array[j]._zOrder > key) array[j + 1] = array[j];
+					else break;
+				}
+				array[j + 1] = c;
+				i++;
+			}
+			var model:IConchNode = c.parent.conchModel;
+			if (model) {
+				if (model.updateZOrder != null) {
+					model.updateZOrder();
+				} else {
+					for (i = 0; i < len; i++) {
+						model.removeChild(array[i].conchModel);
 					}
-					if (z > childs[mid]._zOrder) mid++;
-					var f:Node = c.parent;
-					childs.splice(i, 1);
-					childs.splice(mid, 0, c);
-					if (f && f.model)
-					{
-						f.model&&f.model.removeChild(c.model);
-						f.model && f.model.addChildAt(c.model, mid);
+					for (i = 0; i < len; i++) {
+						model.addChildAt(array[i].conchModel, i);
 					}
-					repaint = true;
 				}
 			}
-			return repaint;
+			return true;
 		}
 		
 		/**
@@ -231,15 +224,177 @@ package laya.utils {
 		}
 		
 		/**
-		 * 解析一个字符串，并返回一个整数。和JS原生的parseInt不同：如果str为空或者非数字，原生返回NaN，这里返回0
-		 * @param	str 要被解析的字符串
-		 * @param	radix 表示要解析的数字的基数。该值介于 2 ~ 36 之间。如果它以 “0x” 或 “0X” 开头，将以 16 为基数。如果该参数小于 2 或者大于 36，则 parseInt() 将返回 NaN。
-		 * @return	返回解析后的数字
+		 * 解析一个字符串，并返回一个整数。和JS原生的parseInt不同：如果str为空或者非数字，原生返回NaN，这里返回0。
+		 * @param	str		要被解析的字符串。
+		 * @param	radix	表示要解析的数字的基数。默认值为0，表示10进制，其他值介于 2 ~ 36 之间。如果它以 “0x” 或 “0X” 开头，将以 16 为基数。如果该参数不在上述范围内，则此方法返回 0。
+		 * @return	返回解析后的数字。
 		 */
-		public static function parseInt(str:String, radix:int=0):int {
+		public static function parseInt(str:String, radix:int = 0):int {
 			var result:* = Browser.window.parseInt(str, radix);
 			if (isNaN(result)) return 0;
 			return result;
+		}
+		
+		/**@private */
+		public static function getFileExtension(path:String):String {
+			_extReg.lastIndex = path.lastIndexOf(".");
+			var result:Array = _extReg.exec(path);
+			if (result && result.length > 1) {
+				return result[1].toLowerCase();
+			}
+			return null;
+		}
+		
+		/**
+		 * 获取指定区域内相对于窗口左上角的transform。
+		 * @param	coordinateSpace	坐标空间，不能是Stage引用
+		 * @param	x				相对于coordinateSpace的x坐标
+		 * @param	y				相对于coordinateSpace的y坐标
+		 * @return
+		 */
+		public static function getTransformRelativeToWindow(coordinateSpace:Sprite, x:Number, y:Number):Object {
+			var stage:Stage = Laya.stage;
+			
+			// coordinateSpace的全局缩放、坐标
+			var globalTransform:Rectangle = Utils.getGlobalPosAndScale(coordinateSpace);
+			// canvas的transform矩阵
+			var canvasMatrix:Matrix = stage._canvasTransform.clone();
+			// 在矩阵变化前前记录的canvas的坐标
+			var canvasLeft:Number = canvasMatrix.tx;
+			var canvasTop:Number = canvasMatrix.ty;
+			
+			// 把矩阵转回0度，得到正确的画布缩放比
+			canvasMatrix.rotate(-Math.PI / 180 * Laya.stage.canvasDegree);
+			// 组合画布缩放和舞台适配缩放
+			canvasMatrix.scale(Laya.stage.clientScaleX, Laya.stage.clientScaleY);
+			// 画布是否处于正常角度的垂直角度，-90或90度
+			var perpendicular:Boolean = (Laya.stage.canvasDegree % 180 != 0);
+			var tx:Number, ty:Number;
+			
+			if (perpendicular) {
+				// 在舞台上的坐标
+				tx = y + globalTransform.y;
+				ty = x + globalTransform.x;
+				
+				// 在画布上的坐标
+				tx *= canvasMatrix.d;
+				ty *= canvasMatrix.a;
+				
+				// 设置了screenMode = horizontal
+				if (Laya.stage.canvasDegree == 90) {
+					// 在浏览器窗口上的坐标
+					// 此时画布的left是视觉上的right，画布的left是视觉上的top
+					tx = canvasLeft - tx;
+					ty += canvasTop;
+				} 
+				// screenMode = vertical并且设备在横屏状态，画布旋转-90度
+				else {
+					// 在浏览器窗口上的坐标
+					// 此时画布的left是视觉上的left，画布的top是视觉上的bottom
+					tx += canvasLeft;
+					ty = canvasTop - ty;
+				}
+			} 
+			// 没有canvas旋转
+			else {
+				// 在舞台上的坐标
+				tx = x + globalTransform.x;
+				ty = y + globalTransform.y;
+				
+				// 在画布上的坐标
+				tx *= canvasMatrix.a;
+				ty *= canvasMatrix.d;
+				
+				// 在浏览器窗口上的坐标
+				tx += canvasLeft;
+				ty += canvasTop;
+			}
+			
+			// 组合画布缩放和舞台适配缩放以及显示对象缩放，得到DOM原因的缩放因子
+			var domScaleX:Number, domScaleY:Number;
+			if (perpendicular) {
+				domScaleX = canvasMatrix.d * globalTransform.height;
+				domScaleY = canvasMatrix.a * globalTransform.width;
+			} else {
+				domScaleX = canvasMatrix.a * globalTransform.width;
+				domScaleY = canvasMatrix.d * globalTransform.height;
+			}
+			
+			return {x: tx, y: ty, scaleX: domScaleX, scaleY: domScaleY};
+		}
+		
+		/**
+		 * 使DOM元素使用舞台内的某块区域内。
+		 * @param	dom				DOM元素引用
+		 * @param	coordinateSpace	坐标空间，不能是Stage引用
+		 * @param	x				相对于coordinateSpace的x坐标
+		 * @param	y				相对于coordinateSpace的y坐标
+		 * @param	width			宽度
+		 * @param	height			高度
+		 */
+		public static function fitDOMElementInArea(dom:Object, coordinateSpace:Sprite, x:Number, y:Number, width:Number, height:Number):void {
+			if (!dom._fitLayaAirInitialized) {
+				dom._fitLayaAirInitialized = true;
+				dom.style.transformOrigin = dom.style.webKittransformOrigin = "left top";
+				dom.style.position = "absolute"
+			}
+			
+			var transform:Object = getTransformRelativeToWindow(coordinateSpace, x, y);
+			
+			// 设置dom样式
+			dom.style.transform = dom.style.webkitTransform = "scale(" + transform.scaleX + "," + transform.scaleY + ") rotate(" + (Laya.stage.canvasDegree) + "deg)";
+			dom.style.width = width + 'px';
+			dom.style.height = height + 'px';
+			dom.style.left = transform.x + 'px';
+			dom.style.top = transform.y + 'px';
+		}
+		
+		/**
+		 * @private
+		 * 是否是可用的Texture数组
+		 * @param	textureList
+		 * @return
+		 */
+		public static function isOkTextureList(textureList:Array):Boolean
+		{
+			if (!textureList) return false;
+			var i:int, len:int = textureList.length;
+			var tTexture:Texture;
+			for (i = 0; i < len; i++)
+			{
+				tTexture = textureList[i];
+				if (!tTexture.source) return false;
+			}
+			return true;
+		}
+		
+		/**
+		 * @private
+		 * 是否是可用的绘图指令数组
+		 * @param	cmds
+		 * @return
+		 */
+		public static function isOKCmdList(cmds:Array):Boolean
+		{
+			if (!cmds) return false;
+			var i:int, len:int = cmds.length;
+			var context:RenderContext = Render._context;
+			var cmd:Object;
+			var tex:Texture;
+			for (i = 0; i < len; i++)
+			{
+				cmd = cmds[i];
+				switch(cmd.callee)
+				{
+					case context._drawTexture: 
+					case context._fillTexture: 
+					case context._drawTextureWithTransform: 
+						tex = cmd[0];
+						if (!tex || !tex.source) return false;
+					
+				}
+			}
+			return true;
 		}
 	}
 }

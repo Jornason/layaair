@@ -10,6 +10,7 @@ package laya.filters {
 		
 		/**模糊滤镜的强度(值越大，越不清晰 */
 		public var strength:Number;
+		public var strength_sig2_2sig2_gauss1:Array = [];//给shader用的。避免创建对象
 		
 		/**
 		 * 模糊滤镜
@@ -43,7 +44,7 @@ package laya.filters {
 		 */
 		public override function callNative(sp:Sprite):void
 		{
-			sp.model &&sp.model.blurFilter&&sp.model.blurFilter(strength);
+			sp.conchModel &&sp.conchModel.blurFilter&&sp.conchModel.blurFilter(strength);
 		}
 	}
 }

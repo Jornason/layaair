@@ -1,17 +1,22 @@
 package laya.resource {
+	import laya.net.URL;
+	import laya.renders.Render;
 	import laya.utils.Browser;
 	
 	/**
-	 * <code>HTMLImage</code> 用于创建 HTML Image 元素。
+	 * @private
+	 * <p> <code>HTMLImage</code> 用于创建 HTML Image 元素。</p>
+	 * <p>请使用 <code>HTMLImage.create()<code>获取新实例，不要直接使用 <code>new HTMLImage<code> 。</p>
 	 */
 	public class HTMLImage extends FileBitmap {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
 		
 		/**
-		 * 创建一个 <code>HTMLImage</code> 实例。请不要直接使用 new HTMLImage
+		 * <p>创建一个 <code>HTMLImage</code> 实例。</p>
+		 * <p>请使用 <code>HTMLImage.create()<code>创建实例，不要直接使用 <code>new HTMLImage<code> 。</p>
 		 */
-		public static var create:Function = function(src:String):HTMLImage {
-			return new HTMLImage(src);
+		public static var create:Function = function(src:String, def:* = null):HTMLImage {
+			return new HTMLImage(src, def);
 		}
 		
 		/**异步加载锁*/
@@ -19,6 +24,7 @@ package laya.resource {
 		/**异步加载完成后是否需要释放（有可能在恢复过程中,再次被释放，用此变量做标记）*/
 		protected var _needReleaseAgain:Boolean = false;
 		
+		private var _enableMerageInAtlas:Boolean = true;
 		
 		/**
 		 * @inheritDoc
@@ -42,18 +48,36 @@ package laya.resource {
 		}
 		
 		/**
-		 * 创建一个 <code>HTMLImage</code> 实例。请不要直接使用 new HTMLImage
+		 * <p>创建一个 <code>HTMLImage</code> 实例。</p>
+		 * <p>请使用 <code>HTMLImage.create()<code>创建实例，不要直接使用 <code>new HTMLImage<code> 。</p>
 		 */
-		public function HTMLImage(src:String) {
+		public function HTMLImage(src:String, def:* = null) {
 			super();
-			_init_(src);
+			_init_(src, def);
 		}
 		
-		protected function _init_(src:String):void {
+		protected function _init_(src:String, def:*):void {
 			_src = src;
 			_source = new Browser.window.Image();
-			_source.crossOrigin = "";
-		    (src) && (_source.src = src);
+			if (def) {
+				def.onload && (this.onload = def.onload);
+				def.onerror && (this.onerror = def.onerror);
+				def.onCreate && def.onCreate(this);
+			}
+			if (src.indexOf("data:image") != 0) _source.crossOrigin = "";
+			
+			(src) && (_source.src = src);
+		}
+		
+		public function get enableMerageInAtlas():Boolean {
+			return _enableMerageInAtlas;
+		}
+		
+		public function set enableMerageInAtlas(value:Boolean):void {
+			_enableMerageInAtlas = value;
+			if (Render.isConchApp) {
+				if (_source) _source.enableMerageInAtlas = value;
+			}
 		}
 		
 		/**
@@ -62,11 +86,10 @@ package laya.resource {
 		override protected function recreateResource():void {
 			if (_src === "")
 				throw new Error("src no null！");
-	
+			
 			_needReleaseAgain = false;
 			if (!_source) {
 				_recreateLock = true;
-				startCreate();
 				var _this:HTMLImage = this;
 				_source = new Browser.window.Image();
 				_source.crossOrigin = "";
@@ -81,23 +104,22 @@ package laya.resource {
 					_this._source.onload = null;
 					_this.memorySize = _w * _h * 4;
 					_this._recreateLock = false;
-					_this.compoleteCreate();//处理创建完成后相关操作
+					_this.completeCreate();//处理创建完成后相关操作
 				};
 				_source.src = _src;
 			} else {
 				if (_recreateLock)
 					return;
-				startCreate();
 				memorySize = _w * _h * 4;
 				_recreateLock = false;
-				compoleteCreate();//处理创建完成后相关操作
+				completeCreate();//处理创建完成后相关操作
 			}//资源恢复过程中会走此分支,_source中应为null（对应WebGLImage）,本类get source属性中处理
 		}
 		
 		/**
 		 * @inheritDoc
 		 */
-		override protected function detoryResource():void {
+		override protected function disposeResource():void {
 			if (_recreateLock)
 				_needReleaseAgain = true;
 			(_source) && (_source = null, memorySize = 0);

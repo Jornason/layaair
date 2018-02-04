@@ -11,10 +11,6 @@ package laya.webgl.canvas {
 	import laya.webgl.utils.IndexBuffer2D;
 	import laya.webgl.utils.VertexBuffer2D;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class Path {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
 		public var _x:Number = 0;
@@ -63,8 +59,7 @@ package laya.webgl.canvas {
 			return geo;
 		}
 		
-		public function setGeomtry(shape:IShape):void
-		{
+		public function setGeomtry(shape:IShape):void {
 			geomatrys.push(_curGeomatry = shape);
 		}
 		
@@ -80,14 +75,14 @@ package laya.webgl.canvas {
 		}
 		
 		public function update():void {
-			var si:int = ib.byteLength;
+			var si:int = ib._byteLength;
 			var len:int = geomatrys.length;
 			this.offset = si;
 			for (var i:int = geoStart; i < len; i++) {
-				geomatrys[i].getData(ib, vb, vb.byteLength / (5 * 4));
+				geomatrys[i].getData(ib, vb, vb._byteLength / 20);
 			}
 			geoStart = len;//记录下一次 该从哪个位置开始计算几何图形的数据
-			this.count = (ib.byteLength - si) / CONST3D2D.BYTES_PIDX;
+			this.count = (ib._byteLength - si) / CONST3D2D.BYTES_PIDX;
 		}
 		
 		public function reset():void {
@@ -95,6 +90,22 @@ package laya.webgl.canvas {
 			this.ib.clear();
 			offset = count = geoStart = 0;
 			geomatrys.length = 0;
+		}
+		
+		public function recover():void
+		{
+			_curGeomatry = null;
+			vb.destory();
+			vb = null;
+			ib.destory();
+			ib = null;
+			//tempArray.length = 0;
+			//dirty=closePath = false;
+			//_x = _y = 0;
+			//ib = IndexBuffer2D.create(WebGLContext.DYNAMIC_DRAW);
+			//vb = VertexBuffer2D.create(5);
+			//debugger
+			//Pool.recover("path", this);
 		}
 	
 	}

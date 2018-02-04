@@ -1,12 +1,11 @@
 module laya 
 {
-	import Animation = laya.display.Animation;
-	import Stage = laya.display.Stage;
-	import Rectangle = laya.maths.Rectangle;
-	import Loader = laya.net.Loader;
-	import Browser = laya.utils.Browser;
-	import Handler = laya.utils.Handler;
-	import WebGL = laya.webgl.WebGL;
+	import Animation = Laya.Animation;
+	import Stage = Laya.Stage;
+	import Rectangle = Laya.Rectangle;
+	import Loader = Laya.Loader;
+	import Browser = Laya.Browser;
+	import WebGL = Laya.WebGL;
 
 	export class Animation_Altas {
 		private AniConfPath: string = "../../res/fighter/fighter.json";
@@ -21,7 +20,7 @@ module laya
 			Laya.stage.scaleMode = "showall";
 			Laya.stage.bgColor = "#232628";
 
-			Laya.loader.load(this.AniConfPath, Handler.create(this, this.createAnimation), null, Loader.ATLAS);
+			ProtoBuf.load(this.AniConfPath, this.createAnimation);
 		}
 
 		private createAnimation(): void {

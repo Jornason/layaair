@@ -4,8 +4,6 @@ package laya.debug.tools.comps
 	
 	import laya.display.Graphics;
 	import laya.display.Sprite;
-	import laya.editor.comonents.DragBar;
-	import laya.ui.Box;
 
 	/**
 	 * ...
@@ -16,7 +14,7 @@ package laya.debug.tools.comps
 		public var type:int;
 		public function AutoSizeRec(type:String) 
 		{
-			super(type);
+			
 		}
 		
 		override public function set height(value:Number):void

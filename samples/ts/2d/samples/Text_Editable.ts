@@ -1,8 +1,8 @@
 module laya {
-	import Input = laya.display.Input;
-	import Stage = laya.display.Stage;
-	import Browser = laya.utils.Browser;
-	import WebGL = laya.webgl.WebGL;
+	import Input = Laya.Input;
+	import Stage = Laya.Stage;
+	import Browser = Laya.Browser;
+	import WebGL = Laya.WebGL;
 
 	export class Text_Editable {
 
@@ -28,9 +28,6 @@ module laya {
 
 			inputText.text = "这段文本不可编辑，但可复制";
 			inputText.editable = false;
-			// 输入期间输入框的位置偏移
-			inputText.inputElementXAdjuster = -1;
-			inputText.inputElementYAdjuster = 1;
 
 			// 设置字体样式
 			inputText.bold = true;

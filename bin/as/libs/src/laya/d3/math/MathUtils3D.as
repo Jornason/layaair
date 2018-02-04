@@ -28,7 +28,7 @@ package laya.d3.math {
 		}
 		
 		/**
-		 * 两个值是否在容差的范围内近似相等
+		 * 两个值是否在容差的范围内近似相等Sqr Magnitude
 		 * @param  判断值
 		 * @return  是否近似于0
 		 */
@@ -36,6 +36,12 @@ package laya.d3.math {
 			if (isZero(n1 - n2))
 				return true;
 			return false;
+		}
+		
+		public static function fastInvSqrt(value:Number):Number {
+			if (isZero(value))
+				return value;
+			return 1.0 / Math.sqrt(value);
 		}
 	}
 

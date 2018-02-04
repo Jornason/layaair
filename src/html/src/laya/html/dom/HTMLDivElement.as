@@ -14,9 +14,9 @@ package laya.html.dom {
 	 * DIV标签
 	 */
 	public class HTMLDivElement extends HTMLElement {
-		/**@private */
+		/** 实际内容的高 */
 		public var contextHeight:Number;
-		/**@private */
+		/** 实际内容的宽 */
 		public var contextWidth:Number;
 		
 		public function HTMLDivElement() {
@@ -32,10 +32,24 @@ package laya.html.dom {
 		 * 设置标签内容
 		 */
 		public function set innerHTML(text:String):void {
-			this.removeChildren();
+			//if (!text) this.size(0, 0);
+			this.destroyChildren();
 			appendHTML(text);
 		}
-		
+		override public function set width(value:Number):void 
+		{
+			var changed:Boolean;
+			if (value === 0)
+			{
+				changed = value != _width;
+			}else
+			{
+				changed = value != width;
+			}	
+			super.width = value;
+			if(changed)
+			layout();
+		}
 		/**
 		 * 追加内容，解析并对显示对象排版
 		 * @param	text
@@ -86,6 +100,7 @@ package laya.html.dom {
 		 * 对显示内容进行排版
 		 */
 		public function layout():void {
+			if (!style) return;
 			style._type |= CSSStyle.ADDLAYOUTED;
 			var tArray:Array = Layout.layout(this);
 			if (tArray) {
@@ -99,7 +114,7 @@ package laya.html.dom {
 		}
 		
 		/**
-		 * 如果对象的高度被设置过，返回设置的高度，如果没被设置过，则返回实际内容的高度
+		 * 获取对象的高
 		 */
 		override public function get height():Number {
 			if (_height) return _height;
@@ -107,7 +122,7 @@ package laya.html.dom {
 		}
 		
 		/**
-		 * 如果对象的宽度被设置过，返回设置的宽度，如果没被设置过，则返回实际内容的宽度
+		 * 获取对象的宽
 		 */
 		override public function get width():Number {
 			if (_width) return _width;

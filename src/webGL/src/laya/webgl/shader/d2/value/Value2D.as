@@ -1,6 +1,9 @@
 package laya.webgl.shader.d2.value {
 	import laya.resource.Bitmap;
 	import laya.resource.Texture;
+	import laya.webgl.WebGL;
+	import laya.webgl.shader.BaseShader;
+	import laya.webgl.shader.d2.skinAnishader.SkinSV;
 	import laya.webgl.WebGLContext;
 	import laya.webgl.canvas.DrawStyle;
 	import laya.webgl.shader.Shader;
@@ -9,12 +12,9 @@ package laya.webgl.shader.d2.value {
 	import laya.webgl.shader.d2.Shader2X;
 	import laya.webgl.shader.d2.ShaderDefines2D;
 	import laya.webgl.utils.CONST3D2D;
+	import laya.webgl.utils.MatirxArray;
 	import laya.webgl.utils.RenderState2D;
 
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class Value2D  extends ShaderValue
 	{
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
@@ -24,6 +24,8 @@ package laya.webgl.shader.d2.value {
 		
 		protected static var _cache:Array=[];
 		protected static var _typeClass:Object = [];
+		
+		public static var TEMPMAT4_ARRAY:Array=/*[STATIC SAFE]*/ [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 		private static function _initone(type:int, classT:*):void
 		{
@@ -38,6 +40,8 @@ package laya.webgl.shader.d2.value {
 			_TEXCOORD = [2, WebGLContext.FLOAT, false, 4 * CONST3D2D.BYTES_PE, 2 * CONST3D2D.BYTES_PE];
 			_initone(ShaderDefines2D.COLOR2D, Color2dSV);
 			_initone(ShaderDefines2D.PRIMITIVE, PrimitiveSV);
+			_initone(ShaderDefines2D.FILLTEXTURE, FillTextureSV);
+			_initone(ShaderDefines2D.SKINMESH, SkinSV);
 			_initone(ShaderDefines2D.TEXTURE2D, TextureSV);
 			_initone(ShaderDefines2D.TEXTURE2D | ShaderDefines2D.COLORADD,TextSV);	
 			_initone(ShaderDefines2D.TEXTURE2D | ShaderDefines2D.FILTERGLOW, TextureSV);
@@ -63,8 +67,8 @@ package laya.webgl.shader.d2.value {
 		public var strokeStyle:DrawStyle;
 		public var colorAdd:Array;
 		public var glTexture:Bitmap;
+		/*[IF-FLASH]*/public var mul_mmat:Array;//存储两个矩阵相乘的值，mmat*ummat2
 		public var u_mmat2:Array;
-		public var u_pos:Array = [0,0];
 		
 		private var _inClassCache:Array;
 		private var _cacheID:int = 0;
@@ -83,6 +87,7 @@ package laya.webgl.shader.d2.value {
 			this.colorAdd = null;
 			this.glTexture = null;
 			this.u_mmat2 = null;
+			/*[IF-FLASH]*/this.mul_mmat = null;
 			
 			_cacheID = mainID|subID;
 			_inClassCache = _cache[_cacheID];
@@ -111,8 +116,7 @@ package laya.webgl.shader.d2.value {
 		
 		private function _ShaderWithCompile():Shader2X
 		{
-			
-			return  Shader.withCompile(0, mainID, defines.toNameDic(), mainID | defines._value, Shader2X.create) as Shader2X;
+			return  Shader.withCompile2D(0, mainID, defines.toNameDic(), mainID | defines._value, Shader2X.create) as Shader2X;
 		}
 		
 		private function _withWorldShaderDefines():Shader2X
@@ -126,7 +130,7 @@ package laya.webgl.shader.d2.value {
 				var name:String;
 				 dic = defines.toNameDic(); for (name in dic) def[name] = "";
 				 dic = defs.toNameDic(); for (name in dic) def[name] = "";
-				sd=Shader.withCompile(0, mainID, def, mainID | defines._value| defs.getValue(), Shader2X.create) as Shader2X;
+				sd=Shader.withCompile2D(0, mainID, def, mainID | defines._value| defs.getValue(), Shader2X.create) as Shader2X;
 			}
 			var worldFilters:Array = RenderState2D.worldFilters; 
 			if (!worldFilters) return sd;
@@ -146,14 +150,17 @@ package laya.webgl.shader.d2.value {
 			alpha = ALPHA * renderstate2d.worldAlpha;
 			
 			if ( RenderState2D.worldMatrix4 !== RenderState2D.TEMPMAT4_ARRAY) defines.add(ShaderDefines2D.WORLDMAT);
+			(WebGL.shaderHighPrecision) && (defines.add(ShaderDefines2D.SHADERDEFINE_FSHIGHPRECISION));
 			var sd:Shader2X = renderstate2d.worldShaderDefines?_withWorldShaderDefines():(Shader.sharders[mainID | defines._value] as Shader2X || _ShaderWithCompile());
 			
 			var params:Array;
 			 
 			this.size[0]  = renderstate2d.width, this.size[1] = renderstate2d.height;
-			mmat = renderstate2d.worldMatrix4;
+			mmat = renderstate2d.worldMatrix4;			
+			/*[IF-FLASH]*/MatirxArray.ArrayMul(mmat, this.u_mmat2, TEMPMAT4_ARRAY);
+			/*[IF-FLASH]*/mul_mmat = TEMPMAT4_ARRAY;
 			
-			if (Shader.activeShader!==sd)
+			if (BaseShader.activeShader!==sd)
 			{
 				if (sd._shaderValueWidth !==  renderstate2d.width ||  sd._shaderValueHeight !== renderstate2d.height){
 					sd._shaderValueWidth  = renderstate2d.width;
@@ -184,10 +191,10 @@ package laya.webgl.shader.d2.value {
 			if (!value) 
 				return;
 				
-			var n:int = value.length,f:*;
+			var n:int = value.length, f:*;
 			for (var i:int = 0; i < n; i++)
 			{
-				f= value[i]
+				f = value[i];
 				if (f)
 				{
 					defines.add(f.type);//搬到setValue中

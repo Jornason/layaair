@@ -1,11 +1,10 @@
 package laya.utils {
 	import laya.renders.Render;
-	import laya.utils.CacheManger;
+	import laya.utils.CacheManager;
 	import laya.utils.Utils;
 	
 	/**
-	 * ...
-	 * @author
+	 * @private
 	 */
 	public class VectorGraphManager {
 		
@@ -13,7 +12,7 @@ package laya.utils {
 		
 		public var useDic:Object = {};
 		public var shapeDic:Object = {};
-		public var shapeLineDic:Object = { };
+		public var shapeLineDic:Object = {};
 		
 		private var _id:uint = 0;
 		private var _checkKey:Boolean = false;
@@ -21,7 +20,7 @@ package laya.utils {
 		
 		public function VectorGraphManager() {
 			if (Render.isWebGL) {
-				CacheManger.regCacheByFunction(Utils.bind(this.startDispose, this), Utils.bind(this.getCacheList, this));
+				CacheManager.regCacheByFunction(Utils.bind(this.startDispose, this), Utils.bind(this.getCacheList, this));
 			}
 		}
 		
@@ -34,10 +33,9 @@ package laya.utils {
 		 * @return
 		 */
 		public function getId():uint {
-			if (_freeIdArray.length > 0)
-			{
-				return _freeIdArray.pop();
-			}
+			//if (_freeIdArray.length > 0) {
+			//return _freeIdArray.pop();
+			//}
 			return _id++;
 		}
 		
@@ -93,7 +91,7 @@ package laya.utils {
 			if (useDic[id] != null) {
 				delete useDic[id];
 			}
-			_freeIdArray.push(id);
+			//_freeIdArray.push(id);
 		}
 		
 		/**
@@ -115,7 +113,7 @@ package laya.utils {
 		/**
 		 * 开始清理状态，准备销毁
 		 */
-		public function startDispose():void {
+		public function startDispose(key:Boolean):void {
 			var str:*;
 			for (str in useDic) {
 				useDic[str] = false;

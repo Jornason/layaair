@@ -13,12 +13,12 @@
 </head>
 <body style="background-color: #FFFFFF;" onload="init()">
     <!-- protocol buffer -->
-    <script type="text/javascript" src="../../../bin/js/libs/bytebuffer.js"></script>
     <script type="text/javascript" src="../../../bin/js/libs/protobuf.js"></script>
-    <!-- libraries -->
+    <!-- matter.js -->
     <script src="../../../bin/js/libs/matter.js"></script>
+    <script src="../../../bin/js/libs/LayaRender.js"></script>
+    <!-- libraries -->
     <script src="../../../bin/js/libs/laya.core.js"></script>
-    <script src="../../../bin/js/libs/matter-RenderLaya.js"></script>
     <script src="../../../bin/js/libs/laya.webgl.js"></script>
     <script src="../../../bin/js/libs/laya.filter.js"></script>
     <script src="../../../bin/js/libs/laya.particle.js"></script>
@@ -40,6 +40,8 @@
             <option>Filters_Blur</option>
             <option>Filters_Color</option>
             <option>Filters_Glow</option>
+            <option>HitTest_Point</option>
+            <option>HitTest_Rectangular</option>
             <option>InputDevice_Compass</option>
             <option>InputDevice_GluttonousSnake</option>
             <option>InputDevice_Map</option>
@@ -79,7 +81,12 @@
             <option>PIXI_Example_05</option>
             <option>PIXI_Example_21</option>
             <option>PIXI_Example_23</option>
-            <option>Skeleton_Swordman</option>
+            <option>Skeleton_ChangeSkin</option>
+            <option>Skeleton_MultiTexture</option>
+            <option>Skeleton_SpineEvent</option>
+            <option>Skeleton_SpineIkMesh</option>
+            <option>Skeleton_SpineStretchyman</option>
+            <option>Skeleton_SpineVine</option>
             <option>SmartScale_Align_Contral</option>
             <option>SmartScale_Landscape</option>
             <option>SmartScale_Portrait</option>
@@ -94,6 +101,7 @@
             <option>Sprite_DisplayImage</option>
             <option>Sprite_DrawPath</option>
             <option>Sprite_DrawShapes</option>
+            <option>Sprite_Guide</option>
             <option>Sprite_MagnifyingGlass</option>
             <option>Sprite_NodeControl</option>
             <option>Sprite_Pivot</option>
@@ -141,7 +149,9 @@
             <option>UI_Tab</option>
             <option>UI_TextArea</option>
             <option>UI_Tree</option>
+            <option>UI_Panel</option>
         </select>
+		<input type="button" value="切换" onclick="showNext()" />
     </div>
     <script>
     var jsCtrl,select,type;
@@ -178,6 +188,10 @@
         var r = window.location.search.substr(1).match(reg);
         if(r!=null)return  unescape(r[2]); return null;
         }
+		function showNext(){
+			select.selectedIndex++;
+			selectChanged();
+		}
         </script>
     </body>
 </html>

@@ -4,6 +4,7 @@ package laya.resource {
 	import laya.maths.Rectangle;
 	import laya.net.URL;
 	import laya.renders.Render;
+	import laya.utils.Browser;
 	import laya.utils.RunDriver;
 	
 	/**
@@ -41,7 +42,7 @@ package laya.resource {
 		/**原始高度（包括被裁剪的透明区域）。*/
 		public var sourceHeight:Number = 0;
 		/** @private */
-		protected var _loaded:Boolean;
+		public var _loaded:Boolean;
 		/** @private */
 		protected var _w:Number = 0;
 		/** @private */
@@ -54,6 +55,10 @@ package laya.resource {
 		/** @private */
 		public var _uvID:int = 0;
 		
+		public var _atlasID:int = -1;
+		/** @private */
+		public var scaleRate:Number = 1;
+		
 		/**
 		 * 创建一个 <code>Texture</code> 实例。
 		 * @param	bitmap 位图资源。
@@ -61,9 +66,16 @@ package laya.resource {
 		 */
 		public function Texture(bitmap:Bitmap = null, uv:Array = null) {
 			if (bitmap) {
-				bitmap.useNum++;
+				bitmap._addReference();
 			}
 			setTo(bitmap, uv);
+		}
+		
+		/**
+		 * @private
+		 */
+		public function _setUrl(url:String):void {
+			this.url = url;
 		}
 		
 		/**
@@ -125,7 +137,19 @@ package laya.resource {
 			var btex:Boolean = source is Texture;
 			var uv:Array = btex ? source.uv : DEF_UV;
 			var bitmap:* = btex ? source.bitmap : source;
+			var bIsAtlas:* = RunDriver.isAtlas(bitmap);
+			if (bIsAtlas) {
+				var atlaser:* = bitmap._atlaser;
+				var nAtlasID:int = (source as Texture)._atlasID;
+				if (nAtlasID == -1) {
+					throw new Error("create texture error");
+				}
+				bitmap = atlaser._inAtlasTextureBitmapValue[nAtlasID];
+				uv = atlaser._inAtlasTextureOriUVValue[nAtlasID];
+			}
 			var tex:Texture = new Texture(bitmap, null);
+			if (bitmap.width && (x + width) > bitmap.width) width = bitmap.width - x;
+			if (bitmap.height && (y + height) > bitmap.height) height = bitmap.height - y;
 			tex.width = width;
 			tex.height = height;
 			tex.offsetX = offsetX;
@@ -144,24 +168,54 @@ package laya.resource {
 			var inAltasUVWidth:Number = (u2 - u1), inAltasUVHeight:Number = (v2 - v1);
 			var oriUV:Array = moveUV(uv[0], uv[1], [x, y, x + width, y, x + width, y + height, x, y + height]);
 			tex.uv = [u1 + oriUV[0] * inAltasUVWidth, v1 + oriUV[1] * inAltasUVHeight, u2 - (1 - oriUV[2]) * inAltasUVWidth, v1 + oriUV[3] * inAltasUVHeight, u2 - (1 - oriUV[4]) * inAltasUVWidth, v2 - (1 - oriUV[5]) * inAltasUVHeight, u1 + oriUV[6] * inAltasUVWidth, v2 - (1 - oriUV[7]) * inAltasUVHeight];
+			if (bIsAtlas) {
+				tex.addTextureToAtlas();
+			}
+			
+			var bitmapScale:Number = bitmap.scaleRate;
+			if (bitmapScale && bitmapScale != 1)
+			{
+				tex.sourceWidth /= bitmapScale;
+				tex.sourceHeight /= bitmapScale;
+				tex.width /= bitmapScale;
+				tex.height /= bitmapScale;
+				tex.scaleRate = bitmapScale;
+				tex.offsetX /= bitmapScale;
+				tex.offsetY /= bitmapScale;
+			}else
+			{
+				tex.scaleRate = 1;
+			}
+			
 			return tex;
 		}
 		
 		/**
-		 * 截取Texture的一部分区域，生成新的Texture，如果两个区域没有相交，则返回null
-		 * @param	texture 目标Texture
-		 * @param	x 相对于目标Texture的x位置
-		 * @param	y 相对于目标Texture的y位置
-		 * @param	width 截取的宽度
-		 * @param	height 截取的高度
-		 * @return	返回一个新的Texture
+		 * 截取Texture的一部分区域，生成新的Texture，如果两个区域没有相交，则返回null。
+		 * @param	texture	目标Texture。
+		 * @param	x		相对于目标Texture的x位置。
+		 * @param	y		相对于目标Texture的y位置。
+		 * @param	width	截取的宽度。
+		 * @param	height	截取的高度。
+		 * @return 返回一个新的Texture。
 		 */
 		public static function createFromTexture(texture:Texture, x:Number, y:Number, width:Number, height:Number):Texture {
-			var rect:Rectangle = Rectangle.TEMP.setTo(x - texture.offsetX, y - texture.offsetY, width, height);
+			
+			var texScaleRate:Number = texture.scaleRate;
+			if (texScaleRate != 1)
+			{
+				x *= texScaleRate;
+				y *= texScaleRate;
+				width *= texScaleRate;
+				height *= texScaleRate;
+			}
+			var offset:Number = (!Render.isWebGL && Browser.onFirefox || Browser.onEdge) ? 0.5 : 0;
+			var rect:Rectangle = Rectangle.TEMP.setTo(x - texture.offsetX - offset, y - texture.offsetY - offset, width + offset * 2, height + offset * 2);
 			var result:Rectangle = rect.intersection(_rect1.setTo(0, 0, texture.width, texture.height), _rect2);
-			if (result) var tex:Texture = create(texture, result.x, result.y, result.width, result.height, result.x - rect.x, result.y - rect.y, width, height);
+			if (result)
+				var tex:Texture = create(texture, result.x, result.y, result.width, result.height, result.x - rect.x, result.y - rect.y, width, height);
 			else return null;
-			tex.bitmap.useNum--;
+			tex.bitmap._removeReference();
 			return tex;
 		}
 		
@@ -176,40 +230,50 @@ package laya.resource {
 		 * 表示资源是否已释放。
 		 */
 		public function get released():Boolean {
+			if (!bitmap) return true;
 			return bitmap.released;
 		}
 		
 		/** @private 激活资源。*/
 		public function active():void {
-			bitmap.activeResource();
+			if (bitmap) bitmap.activeResource();
 		}
 		
 		/** 激活并获取资源。*/
 		public function get source():* {
+			if (!bitmap) return null;
 			bitmap.activeResource();
 			return bitmap.source;
 		}
 		
 		/**
-		 * 销毁纹理（分直接销毁，跟计数销毁两种）
-		 * @param	foreDiposeTexture	true为强制销毁主纹理，false是通过计数销毁纹理
+		 * 销毁纹理（分直接销毁，跟计数销毁两种）。
+		 * @param	forceDispose	(default = false)true为强制销毁主纹理，false是通过计数销毁纹理。
 		 */
-		public function destroy(foreDiposeTexture:Boolean = false):void {
-			if (bitmap && (bitmap as Bitmap).useNum > 0) {
-				if (foreDiposeTexture) {
-					bitmap.dispose();
-					(bitmap as Bitmap).useNum = 0;
+		public function destroy(forceDispose:Boolean = false):void {
+			if (bitmap && (bitmap as Bitmap).referenceCount > 0) {
+				var temp:* = this.bitmap;
+				if (forceDispose) {
+					if (Render.isConchApp && temp.source && temp.source.conchDestroy) {
+						this.bitmap.source.conchDestroy();
+					}
+					this.bitmap = null;
+					temp.dispose();
+					(temp as Bitmap)._clearReference();
 				} else {
-					(bitmap as Bitmap).useNum--;
-					if ((bitmap as Bitmap).useNum == 0) {
-						bitmap.dispose();
+					(temp as Bitmap)._removeReference();
+					if ((temp as Bitmap).referenceCount == 0) {
+						if (Render.isConchApp && temp.source && temp.source.conchDestroy) {
+							this.bitmap.source.conchDestroy();
+						}
+						this.bitmap = null;
+						temp.dispose();
 					}
 				}
-				bitmap = null;
-				if (url) Laya.loader.clearRes(url);
+				
+				if (url && this === Laya.loader.getRes(url)) Laya.loader.clearRes(url, forceDispose);
 				_loaded = false;
 			}
-			//uv = null;
 		}
 		
 		/** 实际宽度。*/
@@ -235,14 +299,14 @@ package laya.resource {
 		}
 		
 		/**
-		 * 获取当前纹理是否启用了线性采样
+		 * 获取当前纹理是否启用了线性采样。
 		 */
 		public function get isLinearSampling():Boolean {
 			return Render.isWebGL ? (bitmap.minFifter != 0x2600) : true;
 		}
 		
 		/**
-		 * 设置线性采样的状态（目前只能第一次绘制前设置false生效,来关闭线性采样）
+		 * 设置线性采样的状态（目前只能第一次绘制前设置false生效,来关闭线性采样）。
 		 */
 		public function set isLinearSampling(value:Boolean):void {
 			if (!value && Render.isWebGL) {
@@ -257,10 +321,8 @@ package laya.resource {
 		/**
 		 * 获取当前纹理是否启用了纹理平铺
 		 */
-		public function get repeat():Boolean
-		{
-			if (Render.isWebGL && bitmap)
-			{
+		public function get repeat():Boolean {
+			if (Render.isWebGL && bitmap) {
 				return bitmap.repeat;
 			}
 			return true;
@@ -269,15 +331,11 @@ package laya.resource {
 		/**
 		 * 通过外部设置是否启用纹理平铺(后面要改成在着色器里计算)
 		 */
-		public function set repeat(value:Boolean):void
-		{
-			if (value)
-			{
-				if (Render.isWebGL && bitmap)
-				{
+		public function set repeat(value:Boolean):void {
+			if (value) {
+				if (Render.isWebGL && bitmap) {
 					bitmap.repeat = value;
-					if (value)
-					{
+					if (value) {
 						bitmap.enableMerageInAtlas = false;
 					}
 				}
@@ -290,10 +348,9 @@ package laya.resource {
 		 */
 		public function load(url:String):void {
 			_loaded = false;
-			var fileBitmap:FileBitmap = (this.bitmap || (this.bitmap = HTMLImage.create(URL.formatURL(url)))) as FileBitmap;//WebGl模式被自动替换为WebGLImage
-			if (fileBitmap) {
-				fileBitmap.useNum++;
-			}
+			url = URL.customFormat(url);
+			var fileBitmap:FileBitmap = (this.bitmap || (this.bitmap = HTMLImage.create(url))) as FileBitmap;//WebGl模式被自动替换为WebGLImage
+			if (fileBitmap) fileBitmap._addReference();
 			var _this:Texture = this;
 			fileBitmap.onload = function():void {
 				fileBitmap.onload = null;
@@ -305,9 +362,43 @@ package laya.resource {
 			};
 		}
 		
+		/**@private */
 		public function addTextureToAtlas(e:* = null):void {
 			RunDriver.addTextureToAtlas(this);
 		}
-	
+		
+		/**
+		 * 获取Texture上的某个区域的像素点
+		 * @param	x
+		 * @param	y
+		 * @param	width
+		 * @param	height
+		 * @return  返回像素点集合
+		 */
+		public function getPixels(x:Number, y:Number, width:Number, height:Number):Array {
+			if (Render.isConchApp) {
+				var temp:* = this.bitmap;
+				if (temp.source && temp.source.getImageData) {
+					var arraybuffer:ArrayBuffer = temp.source.getImageData(x, y, width, height);
+					var tUint8Array:Uint8Array = new Uint8Array(arraybuffer);
+					return __JS__("Array.from(tUint8Array)");
+				}
+				return null;
+			} else if (Render.isWebGL) {
+				return RunDriver.getTexturePixels(this, x, y, width, height);
+			} else {
+				Browser.canvas.size(width, height);
+				Browser.canvas.clear();
+				Browser.context.drawTexture(this, -x, -y, this.width, this.height, 0, 0);
+				var info:* = Browser.context.getImageData(0, 0, width, height);
+			}
+			return info.data;
+		}
+		
+		/**@private */
+		public function onAsynLoaded(url:String, bitmap:Bitmap):void {
+			if (bitmap) bitmap._addReference();
+			setTo(bitmap, uv);
+		}
 	}
 }

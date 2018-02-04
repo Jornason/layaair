@@ -1,10 +1,10 @@
 package laya.debug.tools.enginehook 
 {
+	import laya.debug.view.nodeInfo.views.OutPutView;
 	import laya.events.Event;
 	import laya.net.LoaderManager;
 	import laya.net.LocalStorage;
 	import laya.utils.Handler;
-	import laya.debug.view.nodeInfo.views.OutPutView;
 	/**
 	 * ...
 	 * @author ww
@@ -20,8 +20,11 @@ package laya.debug.tools.enginehook
 		private static var nowFails:Object = { };
 		public static var enableFailDebugger:Boolean = true;
 		public static const FailSign:String = "LoadFailItems";
+		public static var isInited:Boolean = false;
 		public static function init():void
-		{		
+		{	
+			if (isInited) return;
+			isInited = true;
 			Laya.loader = new LoaderHook();
 			Laya.loader.on(Event.ERROR, null, onFail);
 			preFails = LocalStorage.getJSON(FailSign);
@@ -68,7 +71,7 @@ package laya.debug.tools.enginehook
 				checkUrls(urls[i]);
 			}
 		}
-		override public function load(url:*, complete:Handler = null, progress:Handler = null, type:String = null, priority:int = 1, cache:Boolean = true):LoaderManager 
+		override public function load(url:*, complete:Handler = null, progress:Handler = null, type:String = null, priority:int = 1, cache:Boolean = true, group:String = null, ignoreCache:Boolean = false):LoaderManager 
 		{
 			if (url is Array)
 			{
@@ -77,7 +80,7 @@ package laya.debug.tools.enginehook
 			{
 				checkUrls(url);
 			}
-			return super.load(url, complete, progress, type, priority, cache);
+			return super.load(url, complete, progress, type, priority, cache,group,ignoreCache);
 		}
 		
 		

@@ -1,14 +1,14 @@
 module laya {
-    import Templet = laya.ani.bone.Templet;
-    import Skeleton = laya.ani.bone.Skeleton;
-    import Event = laya.events.Event;
-    import GlowFilter = laya.filters.GlowFilter;
-    import Loader = laya.net.Loader;
-    import Texture = laya.resource.Texture;
-    import Browser = laya.utils.Browser;
-    import Handler = laya.utils.Handler;
-    import Stat = laya.utils.Stat;
-    import WebGL = laya.webgl.WebGL;
+    import Templet = Laya.Templet;
+    import Skeleton = Laya.Skeleton;
+    import Event = Laya.Event;
+    import GlowFilter = Laya.GlowFilter;
+    import Loader = Laya.Loader;
+    import Texture = Laya.Texture;
+    import Browser = Laya.Browser;
+    import Handler = Laya.Handler;
+    import Stat = Laya.Stat;
+    import WebGL = Laya.WebGL;
 
     export class PerformanceTest_Skeleton {
         private mArmature: Skeleton;
@@ -34,7 +34,7 @@ module laya {
             Laya.init(Browser.width, Browser.height, WebGL);
             Stat.show();
 
-            this.mTexturePath = "../../res/skeleton/" + this.fileName + "/texture.png";
+            this.mTexturePath = "../../res/skeleton/" + this.fileName + "/" + this.fileName + ".png";
             this.mAniPath = "../../res/skeleton/" + this.fileName + "/" + this.fileName + ".sk";
             Laya.loader.load([{ url: this.mTexturePath, type: Loader.IMAGE }, { url: this.mAniPath, type: Loader.BUFFER }], Handler.create(this, this.onAssetsLoaded));
         }

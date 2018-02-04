@@ -13,10 +13,11 @@
 </head>
 <body style="background-color: #a18c34;" onload="init()">
     <!-- protocol buffer -->
-    <script type="text/javascript" src="../../../bin/js/libs/bytebuffer.js"></script>
     <script type="text/javascript" src="../../../bin/js/libs/protobuf.js"></script>
-    <!-- libraries -->
+     <!-- matter.js -->
     <script src="../../../bin/js/libs/matter.js"></script>
+    <script src="../../../bin/js/libs/LayaRender.js"></script>
+    <!-- libraries -->
     <script src="../../../bin/js/libs/laya.core.js"></script>
     <script src="../../../bin/js/libs/laya.webgl.js"></script>
     <script src="../../../bin/js/libs/laya.ani.js"></script>
@@ -27,7 +28,6 @@
     <script src="../../../bin/js/libs/laya.tiledmap.js"></script>
     <script src="../../../bin/js/libs/laya.tiledmap.js"></script>
     <script src="../../../bin/js/libs/laya.ui.js"></script>
-    <script src="../../../bin/js/libs/matter-RenderLaya.js"></script>
     <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=LIhOlvWfdiPYMCsK5wsqlFQD8wW4Bfy6"></script>
     <!-- demos -->
     <script id="jsCtrl"></script>
@@ -41,6 +41,14 @@
             <option>Filters_Blur</option>
             <option>Filters_Color</option>
             <option>Filters_Glow</option>
+            <option>HitTest_Point</option>
+            <option>HitTest_Rectangular</option>
+            <option>InputDevice_Compass</option>>
+            <option>InputDevice_GluttonousSnake</option>>
+            <option>InputDevice_Map</option>>
+            <option>InputDevice_Media</option>
+            <option>InputDevice_Shake</option>>
+            <option>InputDevice_Video</option>>
             <option>Interaction_CustomEvent</option>
             <option>Interaction_Drag</option>
             <option>Interaction_FixInteractiveRegion</option>
@@ -50,12 +58,6 @@
             <option>Interaction_Rotate</option>
             <option>Interaction_Scale</option>
             <option>Interaction_Swipe</option>
-            <option>InputDevice_Compass</option>>
-            <option>InputDevice_GluttonousSnake</option>>
-            <option>InputDevice_Map</option>>
-            <option>InputDevice_Media</option>
-            <option>InputDevice_Shake</option>>
-            <option>InputDevice_Video</option>>
             <option>Loader_MultipleType</option>
             <option>Loader_ProgressAndErrorHandle</option>
             <option>Loader_Sequence</option>
@@ -68,19 +70,22 @@
             <option>Particle_T1</option>
             <option>Particle_T2</option>
             <option>Particle_T3</option>
-            <option>PIXI_Example_04</option>
-            <option>PIXI_Example_05</option>
-            <option>PIXI_Example_21</option>
-            <option>PIXI_Example_23</option>
-            <option>PerformanceTest_Cartoon</option>
             <option>PerformanceTest_Cartoon2</option>
+            <option>PerformanceTest_Cartoon</option>
             <option>PerformanceTest_Legend</option>
             <option>PerformanceTest_Maggots</option>
             <option>PerformanceTest_Skeleton</option>
             <option>Physics_Cloth</option>
             <option>Physics_NewtonsCradle</option>
             <option>Physics_Slingshot</option>
-            <option>Skeleton_Swordman</option>
+            <option>PIXI_Example_04</option>
+            <option>PIXI_Example_05</option>
+            <option>PIXI_Example_21</option>
+            <option>PIXI_Example_23</option>
+            <option>Skeleton_SpineEvent</option>
+            <option>Skeleton_SpineIkMesh</option>
+            <option>Skeleton_SpineStretchyman</option>
+            <option>Skeleton_SpineVine</option>
             <option>SmartScale_Align_Contral</option>
             <option>SmartScale_Landscape</option>
             <option>SmartScale_Portrait</option>
@@ -95,6 +100,7 @@
             <option>Sprite_DisplayImage</option>
             <option>Sprite_DrawPath</option>
             <option>Sprite_DrawShapes</option>
+            <option>Sprite_Guide</option>
             <option>Sprite_MagnifyingGlass</option>
             <option>Sprite_NodeControl</option>
             <option>Sprite_Pivot</option>
@@ -142,6 +148,7 @@
             <option>UI_Tab</option>
             <option>UI_TextArea</option>
             <option>UI_Tree</option>
+            <option>UI_Panel</option>
         </select>
     </div>
     <script>

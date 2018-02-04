@@ -11,9 +11,10 @@ package laya.maths {
 		 */
 		public static var I:Bezier = new Bezier();
 		/** @private */
-		private var _controlPoints:Array = [new Point(), new Point(), new Point()];		
+		private var _controlPoints:Array = [new Point(), new Point(), new Point()];
 		/** @private */
 		private var _calFun:Function = getPoint2;
+		
 		/** @private */
 		private function _switchPoint(x:Number, y:Number):void {
 			var tPoint:Point = _controlPoints.shift();
@@ -94,7 +95,9 @@ package laya.maths {
 			default: 
 				return [];
 			}
-			
+			while (_controlPoints.length <= count) {
+				_controlPoints.push(new Point());
+			}
 			for (i = 0; i < count * 2; i += 2) {
 				_switchPoint(pList[i], pList[i + 1]);
 			}

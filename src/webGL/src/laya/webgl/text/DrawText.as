@@ -1,17 +1,15 @@
 package laya.webgl.text {
+	import laya.display.Text;
 	import laya.maths.Matrix;
 	import laya.resource.Texture;
 	import laya.utils.HTMLChar;
 	import laya.utils.WordText;
 	import laya.webgl.canvas.WebGLContext2D;
+	import laya.webgl.resource.WebGLCharImage;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class DrawText {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
-		private static var _charsTemp:Vector.<DrawTextChar>;
+		private static var _charsTemp:Vector.<WebGLCharImage>;
 		
 		private static var _textCachesPool:Array = [];
 		private static var _curPoolIndex:int = 0;
@@ -26,9 +24,10 @@ package laya.webgl.text {
 		//private static var _charsCacheCount:int=0;
 		///**最大字符缓存数量*/
 		//public static var maxCacheCharsCount:int = 10;
-		private static var _charSeg : ICharSegment = null; 
+		private static var _charSeg:ICharSegment = null;
+		
 		public static function __init__():void {
-			_charsTemp = new Vector.<DrawTextChar>;
+			_charsTemp = new Vector.<WebGLCharImage>;
 			_drawValue = new CharValue();
 			_charSeg = new CharSegment();
 		}
@@ -37,18 +36,21 @@ package laya.webgl.text {
 		 * 项目层根据当前的语言特性，设置自己的分词器，如泰语需要特殊的处理
 		 * @param	charseg
 		 */
-		public static function customCharSeg( charseg: ICharSegment ) : void {
+		public static function customCharSeg(charseg:ICharSegment):void {
 			_charSeg = charseg;
 		}
 		
 		//如果stage缩放发生变化，应该清除所有文字信息，释放所有资源
 		
-		public static function getChar(char:String, id:Number, drawValue:CharValue):DrawTextChar {
+		public static function getChar(char:String, id:Number, drawValue:CharValue):WebGLCharImage {
 			//_charsCacheCount ++;
-			return _charsCache[id] = DrawTextChar.createOneChar(char, drawValue);
+			var result:WebGLCharImage = WebGLCharImage.createOneChar(char, drawValue);
+			if(id!=-1)
+				_charsCache[id] = result;
+			return result;
 		}
-				
-		private static function _drawSlow(save:Array, ctx:WebGLContext2D, txt:String, words:Vector.<HTMLChar>, curMat:Matrix, font:FontInContext, textAlign:String, fillColor:String, borderColor:String, lineWidth:int, x:Number, y:Number, sx:Number, sy:Number):void {
+		
+		private static function _drawSlow(save:Array, ctx:WebGLContext2D, txt:String, words:Vector.<HTMLChar>, curMat:Matrix, font:FontInContext, textAlign:String, fillColor:String, borderColor:String, lineWidth:int, x:Number, y:Number, sx:Number, sy:Number,underLine:int):void {
 			//if (_charsCacheCount > maxCacheCharsCount) {
 			//_charsCacheCount = 0;
 			//CharValue.clear();
@@ -57,11 +59,11 @@ package laya.webgl.text {
 			//_charsCache = {};
 			//}
 			
-			var drawValue:CharValue = _drawValue.value(font, fillColor, borderColor, lineWidth, sx, sy);
+			var drawValue:CharValue = _drawValue.value(font, fillColor, borderColor, lineWidth, sx, sy,underLine);
 			
 			var i:int, n:int;
-			var chars:Vector.<DrawTextChar> = _charsTemp;
-			var width:int = 0, oneChar:DrawTextChar, htmlWord:HTMLChar, id:Number;
+			var chars:Vector.<WebGLCharImage> = _charsTemp;
+			var width:int = 0, oneChar:WebGLCharImage, htmlWord:HTMLChar, id:Number;
 			if (words) {
 				chars.length = words.length;
 				for (i = 0, n = words.length; i < n; i++) {
@@ -71,27 +73,34 @@ package laya.webgl.text {
 					oneChar.active();
 				}
 			} else {
-				// River: 使用新的分词模式来解决类似于泰文的问题
-				if ( txt is WordText )
-					_charSeg.textToSpit( (txt as WordText).toString() );
-				else
-					_charSeg.textToSpit( txt );
-				
-				var len : int = _charSeg.length();
-				chars.length = len;
-				for (i = 0, n = len; i < n; i++) {
-					id = _charSeg.getCharCode(i) + drawValue.txtID;
-					chars[i] = oneChar = _charsCache[id] || getChar(_charSeg.getChar(i), id, drawValue);
+				var text:String = (txt is WordText) ? txt.toString() : txt;
+				if (Text.CharacterCache)
+				{
+					// River: 使用新的分词模式来解决类似于泰文的问题
+					_charSeg.textToSpit(text);
+					var len:int = _charSeg.length();
+					chars.length = len;
+					for (i = 0, n = len; i < n; i++) {
+						id = _charSeg.getCharCode(i) + drawValue.txtID;
+						chars[i] = oneChar = _charsCache[id] || getChar(_charSeg.getChar(i), id, drawValue);
+						oneChar.active();
+						width += oneChar.cw;
+					}
+				}
+				else {
+					chars.length = 0;
+					oneChar = getChar(text, -1, drawValue);
 					oneChar.active();
-					width += oneChar.width;
-				}							
+					width += oneChar.cw;
+					chars[0] = oneChar;
+				}
 			}
 			
 			var dx:Number = 0;
 			if (textAlign !== null && textAlign !== "left")
 				dx = -(textAlign == "center" ? (width / 2) : width);
 			
-			var uv:Array, bdSz:Number, texture:Texture, value:Array,saveLength:int = 0;
+			var uv:Array, bdSz:Number, texture:Texture, value:Array, saveLength:int = 0;
 			if (words) {
 				for (i = 0, n = chars.length; i < n; i++) {
 					oneChar = chars[i];
@@ -109,9 +118,9 @@ package laya.webgl.text {
 						bdSz = oneChar.borderSize;
 						texture = oneChar.texture;
 						ctx._drawText(texture, x + dx - bdSz, y - bdSz, texture.width, texture.height, curMat, 0, 0, 0, 0);
-						save && (value=save[saveLength++],value || (value=save[saveLength-1]=[]), value[0] = texture, value[1] = dx - bdSz, value[2] = -bdSz);
+						save && (value = save[saveLength++], value || (value = save[saveLength - 1] = []), value[0] = texture, value[1] = dx - bdSz, value[2] = -bdSz);
 					}
-					dx += oneChar.width;
+					dx += oneChar.cw;
 				}
 				save && (save.length = saveLength);
 			}
@@ -127,9 +136,9 @@ package laya.webgl.text {
 			}
 		}
 		
-		public static function drawText(ctx:WebGLContext2D, txt:*, words:Vector.<HTMLChar>, curMat:Matrix, font:FontInContext, textAlign:String, fillColor:String, borderColor:String, lineWidth:int, x:Number, y:Number):void {
+		public static function drawText(ctx:WebGLContext2D, txt:*, words:Vector.<HTMLChar>, curMat:Matrix, font:FontInContext, textAlign:String, fillColor:String, borderColor:String, lineWidth:int, x:Number, y:Number,underLine:int=0):void {
 			/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
-			if ((txt && txt.length === 0) || (words && words.length === 0))
+			if ((txt && txt.length===0) || (words && words.length === 0))
 				return;
 			var sx:Number = curMat.a, sy:Number = curMat.d;
 			(curMat.b !== 0 || curMat.c !== 0) && (sx = sy = 1);
@@ -142,28 +151,28 @@ package laya.webgl.text {
 			
 			if (scale) {
 				curMat = curMat.copyTo(WebGLContext2D._tmpMatrix);
+				var tempTx:Number = curMat.tx;
+				var tempTy:Number = curMat.ty;
 				curMat.scale(1 / sx, 1 / sy);
 				curMat._checkTransform();
 				x *= sx;
 				y *= sy;
+				x += tempTx - curMat.tx;
+				y += tempTy - curMat.ty;
 			} else sx = sy = 1;
 			
 			if (words) {
-				_drawSlow(null, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy);
+				_drawSlow(null, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy,underLine);
 			} else {
-				if (txt.toUpperCase===null)
-				{
-					var idNum:Number = sx + sy*100000;
+				if (txt.toUpperCase === null) {
+					var idNum:Number = sx + sy * 100000;
 					var myCache:WordText = txt as WordText;
-					if (!myCache.changed && myCache.id === idNum)
-					{
+					if (!myCache.changed && myCache.id === idNum) {
 						_drawFast(myCache.save, ctx, curMat, x, y);
-					}
-					else
-					{
+					} else {
 						myCache.id = idNum;
 						myCache.changed = false;
-						_drawSlow(myCache.save, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy);
+						_drawSlow(myCache.save, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy,underLine);
 					}
 					return;
 				}
@@ -172,21 +181,27 @@ package laya.webgl.text {
 				
 				var cache:Array = _textsCache[id];
 				
-				if (cache) {
-					_drawFast(cache, ctx, curMat, x, y);
-				} else {
-					_textsCache.__length || (_textsCache.__length = 0);
-					if (_textsCache.__length >Config.WebGLTextCacheCount) {
-						_textsCache = {};
-						_textsCache.__length = 0;
-						_curPoolIndex = 0;
+				if (Text.CharacterCache)
+				{
+					if (cache) {
+						_drawFast(cache, ctx, curMat, x, y);
+					} else {
+						_textsCache.__length || (_textsCache.__length = 0);
+						if (_textsCache.__length > Config.WebGLTextCacheCount) {
+							_textsCache = {};
+							_textsCache.__length = 0;
+							_curPoolIndex = 0;
+						}
+						
+						_textCachesPool[_curPoolIndex] ? (cache = _textsCache[id] = _textCachesPool[_curPoolIndex], cache.length = 0) : (_textCachesPool[_curPoolIndex] = cache = _textsCache[id] = []);
+						_textsCache.__length++
+						_curPoolIndex++;
+						
+						_drawSlow(cache, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy,underLine);
 					}
-					
-					_textCachesPool[_curPoolIndex] ? (cache = _textsCache[id] = _textCachesPool[_curPoolIndex], cache.length = 0) : (_textCachesPool[_curPoolIndex] = cache = _textsCache[id] = []);
-					_textsCache.__length++
-					_curPoolIndex++;
-					
-					_drawSlow(cache, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy);
+				}
+				else{
+						_drawSlow(cache, ctx, txt, words, curMat, font, textAlign, fillColor, borderColor, lineWidth, x, y, sx, sy,underLine);
 				}
 			}
 		}
@@ -206,15 +221,17 @@ class CharValue {
 	public var lineWidth:int;
 	public var scaleX:Number;
 	public var scaleY:Number;
+	public var underLine:int;
 	
-	public function value(font:*, fillColor:String, borderColor:String, lineWidth:int, scaleX:Number, scaleY:Number):CharValue {
+	public function value(font:*, fillColor:String, borderColor:String, lineWidth:int, scaleX:Number, scaleY:Number,underLine:int):CharValue {
 		this.font = font;
 		this.fillColor = fillColor;
 		this.borderColor = borderColor;
 		this.lineWidth = lineWidth;
 		this.scaleX = scaleX;
 		this.scaleY = scaleY;
-		var key:String = font.toString() + scaleX + scaleY + lineWidth + fillColor + borderColor;
+		this.underLine = underLine;
+		var key:String = font.toString() + scaleX + scaleY + lineWidth + fillColor + borderColor + underLine;
 		this.txtID = _keymap[key];
 		if (!this.txtID) {
 			this.txtID = (++_keymapCount) * 0.0000001;

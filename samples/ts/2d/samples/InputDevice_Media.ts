@@ -1,10 +1,10 @@
 module laya
 {
-	import Media = laya.device.media.Media;
-	import Video = laya.device.media.Video;
-	import Text = laya.display.Text;
-	import Browser = laya.utils.Browser;
-	import Handler = laya.utils.Handler;
+	import Media = Laya.Media;
+	import Video = Laya.Video;
+	import Text = Laya.Text;
+	import Browser = Laya.Browser;
+	import Handler = Laya.Handler;
 	
 	/**
 	 * ...
@@ -16,20 +16,15 @@ module laya
 		
 		constructor()
 		{
-			Laya.init(Browser.width, Browser.height);
-			
 			if (Media.supported() === false)
 				alert("当前浏览器不支持");
 			else
 			{
-				this.showMessage();
-				
-				var options:Object = {
+				var options:any = {
 					audio: true,
 					video: { 
-						facingMode: { exact: "environment" },	// 后置摄像头，默认值就是，不设至也可以。
-						width: Laya.stage.width,
-						height:Laya.stage.height
+						width: Browser.width,
+						height:Browser.height
 					}
 				};
 				
@@ -37,39 +32,21 @@ module laya
 			}
 		}
 		
-		private showMessage():void 
-		{
-			var text:Text = new Text();
-			Laya.stage.addChild(text);
-			text.text = "单击舞台播放和暂停";
-			text.color = "#FFFFFF";
-			text.fontSize = 100;
-			text.valign = "middle";
-			text.align = "center";
-			text.size(Laya.stage.width, Laya.stage.height);
-		}
-		
 		private onSuccess(url:string):void
 		{
-			this.video = new Video(Laya.stage.width, Laya.stage.height);
-			this.video.load(url);
-			Laya.stage.addChild(this.video);
-			
-			Laya.stage.on('click', this, this.onStageClick);
+			var video:any = Browser.document.createElement("video");
+			video.width = Browser.clientWidth;
+			video.height = Browser.clientHeight;
+			video.style.zIndex = 1E5;
+			Browser.document.body.appendChild(video);
+			video.controls = true;
+			video.src = url;
+			video.play();
 		}
 		
 		private onError(error:Error):void
 		{
-			alert(error.message);
-		}
-		
-		private onStageClick():void
-		{
-			// 切换播放和暂停。
-			if (!this.video.paused)
-				this.video.pause();
-			else
-				this.video.play();
+			alert(error.name + ":" + error.message);
 		}
 	}
 }

@@ -6,63 +6,64 @@ package laya.webgl.resource {
 	import laya.webgl.WebGL;
 	import laya.webgl.WebGLContext;
 	
-	/**
-	 * ...
-	 * @author
-	 */
 	public class WebGLCanvas extends Bitmap {
 		/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
-		public static var create:Function = function(type:String):*
-		{
-			return new WebGLCanvas(type);
-		}
-			
+		//public static var create:Function = function(type:String):* {
+			//return new WebGLCanvas(type);
+		//}
+		
 		public static var _createContext:Function;
 		
 		private var _ctx:Context;
-		private var _is2D:Boolean = false;
+		//private var _is2D:Boolean = false;
 		
 		/**HTML Canvas*/
-		protected var _canvas:*;
+		public var _canvas:*;
+		public var _imgData:*;	//由于现在使用预乘。所以最希望使用原始数据（已经在shader中预乘了）
+		//public var _oriCanvas:*;
 		
-		/**
-		 * 返回HTML Image,as3无internal货friend，通常禁止开发者修改image内的任何属性
-		 * @param HTML Image
-		 */
-		public function get canvas():* {
-			return _canvas;
-		}
+		///**
+		 //* 返回HTML Image,as3无internal货friend，通常禁止开发者修改image内的任何属性
+		 //* @param HTML Image
+		 //*/
+		//public function get canvas():* {
+			//return _canvas;
+		//}
 		
 		public var iscpuSource:Boolean;
 		
 		//待调整移除
-		public function WebGLCanvas(type:String) {
-			super();
-			_canvas = this;
-			if (type === "2D" || (type === "AUTO" && !Render.isWebGL)) {
-				_is2D = true;
-				_canvas = _source = Browser.createElement("canvas");//_canvas和_source均赋值
-				iscpuSource = true;
-				var o:* = this;
-				o.getContext = function(contextID:String, other:*):Context {
-					if (_ctx) return _ctx;
-					var ctx:* = _ctx = _canvas.getContext(contextID, other);
-					if (ctx) {
-						ctx._canvas = o;
-						ctx.size = function():void {
-						};
-					}
-					//contextID === "2d" && Context._init(o, ctx);
-					return ctx;
-				}
-			} else _canvas = {};
+		//public function WebGLCanvas(type:String) {
+			//super();
+			//_canvas = this;
+			//if (type === "2D" || (type === "AUTO" && !Render.isWebGL)) {
+				//_is2D = true;
+				////_canvas = _source = Browser.createElement("canvas");//_canvas和_source均赋值
+				////iscpuSource = true;
+				//var o:* = this;
+				//o.getContext = function(contextID:String, other:*):Context {
+					//if (_ctx) return _ctx;
+					//var ctx:* = _ctx = _canvas.getContext(contextID, other);
+					//if (ctx) {
+						//ctx._canvas = o;
+						//ctx.size = function():void {
+						//};
+					//}
+					////contextID === "2d" && Context._init(o, ctx);
+					//return ctx;
+				//}
+			//} else _canvas = {};
+		//}
+		
+		public function getCanvas():*{
+			return _canvas;
 		}
 		
 		public function clear():void {
 			_ctx && _ctx.clear();
 		}
 		
-		public function destroy():void {
+		override public function destroy():void {
 			_ctx && _ctx.destroy();
 			_ctx = null;
 		}
@@ -80,9 +81,9 @@ package laya.webgl.resource {
 		}
 		
 		/*override public function copyTo(dec:Bitmap):void {
-			super.copyTo(dec);
-			(dec as WebGLCanvas)._ctx = _ctx;
-		}*/
+		   super.copyTo(dec);
+		   (dec as WebGLCanvas)._ctx = _ctx;
+		   }*/
 		
 		public function size(w:Number, h:Number):void {
 			if (_w != w || _h != h) {
@@ -98,12 +99,11 @@ package laya.webgl.resource {
 		}
 		
 		override protected function recreateResource():void {
-			startCreate();
 			createWebGlTexture();
-			compoleteCreate();
+			completeCreate();
 		}
 		
-		override protected function detoryResource():void {
+		override protected function disposeResource():void {
 			if (_source && !iscpuSource) {
 				WebGL.mainContext.deleteTexture(_source);
 				_source = null;
@@ -118,30 +118,41 @@ package laya.webgl.resource {
 			}
 			var glTex:* = _source = gl.createTexture();
 			iscpuSource = false;
-			var  preTarget:*= WebGLContext.curBindTexTarget;
-			var  preTexture:*=WebGLContext.curBindTexValue;
-			WebGLContext.bindTexture(gl,WebGLContext.TEXTURE_2D, glTex);
-			
-			gl.texImage2D(WebGLContext.TEXTURE_2D, 0, WebGLContext.RGBA, _w, _h, 0, WebGLContext.RGBA, WebGLContext.UNSIGNED_BYTE, null);
+			var preTarget:* = WebGLContext.curBindTexTarget;
+			var preTexture:* = WebGLContext.curBindTexValue;
+			WebGLContext.bindTexture(gl, WebGLContext.TEXTURE_2D, glTex);
+			gl.pixelStorei(WebGLContext.UNPACK_FLIP_Y_WEBGL, 1);
+			//var imgdata:* = Browser.context.getImageData(0, 0, _w, _h);//_canvas's ctx
+			//gl.pixelStorei( WebGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);//TODO canvas? 如果是canvas应该不用设置
+			gl.texImage2D(WebGLContext.TEXTURE_2D, 0, WebGLContext.RGBA, WebGLContext.RGBA, WebGLContext.UNSIGNED_BYTE, _imgData);
+			//gl.pixelStorei( WebGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 			
 			gl.texParameteri(WebGLContext.TEXTURE_2D, WebGLContext.TEXTURE_MAG_FILTER, WebGLContext.LINEAR);
 			gl.texParameteri(WebGLContext.TEXTURE_2D, WebGLContext.TEXTURE_MIN_FILTER, WebGLContext.LINEAR);
 			gl.texParameteri(WebGLContext.TEXTURE_2D, WebGLContext.TEXTURE_WRAP_S, WebGLContext.CLAMP_TO_EDGE);
 			gl.texParameteri(WebGLContext.TEXTURE_2D, WebGLContext.TEXTURE_WRAP_T, WebGLContext.CLAMP_TO_EDGE);
+			gl.pixelStorei(WebGLContext.UNPACK_FLIP_Y_WEBGL, 0);
 			memorySize = _w * _h * 4;
-			(preTarget&&preTexture)&&(WebGLContext.bindTexture(gl,preTarget, preTexture));
-			_canvas = null;
+			(preTarget && preTexture) && (WebGLContext.bindTexture(gl, preTarget, preTexture));
+			//_canvas = null;
 		}
 		
 		public function texSubImage2D(webglCanvas:WebGLCanvas, xoffset:Number, yoffset:Number):void {
 			var gl:WebGLContext = WebGL.mainContext;
-			var  preTarget:*= WebGLContext.curBindTexTarget;
-			var  preTexture:*=WebGLContext.curBindTexValue;
-			WebGLContext.bindTexture(gl,WebGLContext.TEXTURE_2D, _source);
+			var preTarget:* = WebGLContext.curBindTexTarget;
+			var preTexture:* = WebGLContext.curBindTexValue;
+			WebGLContext.bindTexture(gl, WebGLContext.TEXTURE_2D, _source);
+			gl.pixelStorei( WebGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 			gl.texSubImage2D(WebGLContext.TEXTURE_2D, 0, xoffset, yoffset, WebGLContext.RGBA, WebGLContext.UNSIGNED_BYTE, webglCanvas._source);
-			(preTarget&&preTexture)&&(WebGLContext.bindTexture(gl,preTarget, preTexture));
+			gl.pixelStorei( WebGLContext.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+			(preTarget && preTexture) && (WebGLContext.bindTexture(gl, preTarget, preTexture));
 		}
-	
+		public function toBase64(type:String, encoderOptions:Number, callBack:Function):void {
+			var base64Data:String = null;
+			if (_canvas) {
+				base64Data = _canvas.toDataURL(type, encoderOptions);
+			}
+			callBack.call(this, base64Data);
+		}
 	}
-
 }

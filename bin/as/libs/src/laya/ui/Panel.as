@@ -24,7 +24,8 @@ package laya.ui {
 		 */
 		public function Panel() {
 			width = height = 100;
-			_content.optimizeScrollRect = true;
+			//子对象缩放的情况下，优化会有问题，先屏蔽掉
+			//_content.optimizeScrollRect = true;
 		}
 		
 		/**@inheritDoc */
@@ -116,8 +117,8 @@ package laya.ui {
 		/**@private */
 		private function changeScroll():void {
 			_scrollChanged = false;
-			var contentW:Number = contentWidth;
-			var contentH:Number = contentHeight;
+			var contentW:Number = contentWidth || 1;
+			var contentH:Number = contentHeight || 1;
 			
 			var vscroll:ScrollBar = _vScrollBar;
 			var hscroll:ScrollBar = _hScrollBar;
@@ -189,7 +190,7 @@ package laya.ui {
 			content.height = height;
 			content.scrollRect || (content.scrollRect = new Rectangle());
 			content.scrollRect.setTo(0, 0, width, height);
-			content.model&&content.model.scrollRect(0, 0, width, height);//通知微端
+			content.scrollRect = content.scrollRect;
 		}
 		
 		/**
@@ -272,7 +273,7 @@ package laya.ui {
 			if (rect) {
 				var start:int = Math.round(scrollBar.value);
 				scrollBar.isVertical ? rect.y = start : rect.x = start;
-				_content.model&&_content.model.scrollRect(rect.x, rect.y, rect.width, rect.height);
+				_content.scrollRect = rect;
 			}
 		}
 		

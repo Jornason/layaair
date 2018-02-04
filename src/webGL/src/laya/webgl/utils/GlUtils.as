@@ -3,10 +3,6 @@ package laya.webgl.utils {
 	import laya.maths.Rectangle;
 	import laya.webgl.canvas.WebGLContext2D;
 	
-	/**
-	 * ...
-	 * @author laya
-	 */
 	public class GlUtils {
 		// 这个矩阵已经进行Y-flip处理，屏幕左上角为 0,0 坐标.
 		public static function make2DProjection(width:int, height:int, depth:int):* {
@@ -14,7 +10,7 @@ package laya.webgl.utils {
 		}
 		
 		// 填充几何图形的Vb
-		private static var _fillLineArray:Array =/*[STATIC SAFE]*/ [[0, 0, /*0,*/ 0, 0, 0, 0, /*0,*/ 0, 0, 0, 0, /*0,*/ 0, 0, 0, 0, /*0,*/ 0, 0]];
+		private static var _fillLineArray:Array =/*[STATIC SAFE]*/ [0, 0, /*0,*/ 0, 0, 0, 0, /*0,*/ 0, 0, 0, 0, /*0,*/ 0, 0, 0, 0, /*0,*/ 0, 0];
 		
 		/**
 		 *  初始化全局IB,IB索引如下:
@@ -24,7 +20,7 @@ package laya.webgl.utils {
 		 *	 |__\|
 		 *	 3   2
 		 */
-		public static function fillIBQuadrangle(buffer:IndexBuffer2D, count:int/*Quadrangle count*/):Boolean {
+		public static function fillIBQuadrangle(buffer:IndexBuffer2D, count:int):Boolean {
 			if (count > 65535 / 4) {
 				throw Error("IBQuadrangle count:" + count + " must<:" + Math.floor(65535 / 4));
 				return false;
@@ -49,7 +45,7 @@ package laya.webgl.utils {
 			return true;
 		}
 		
-		public static function expandIBQuadrangle(buffer:IndexBuffer2D, count:int/*Quadrangle count*/):void {
+		public static function expandIBQuadrangle(buffer:IndexBuffer2D, count:int):void {
 			buffer.bufferLength >= (count * 6 * Buffer2D.SHORT) || fillIBQuadrangle(buffer, count);
 		}
 		
@@ -114,7 +110,7 @@ package laya.webgl.utils {
 		}
 		
 		public static function fillTranglesVB(vb:VertexBuffer2D, x:Number, y:Number, points:Array, m:Matrix, _x:Number, _y:Number):Boolean {
-			'use strict';
+			//'use strict';
 			//x |= 0; y |= 0;_x |= 0; _y |= 0;
 			
 			var vpos:int = (vb._byteLength >> 2)/*FLOAT32*/ + points.length;///    Context._RECTVBSIZE;
@@ -150,10 +146,34 @@ package laya.webgl.utils {
 			vb._upload = true;
 			return true;
 		}
+
+		public static function copyPreImgVb(vb:VertexBuffer2D, dx:Number, dy:Number):void
+		{
+			
+			var vpos:int = (vb._byteLength >> 2)/*FLOAT32*/;// + WebGLContext2D._RECTVBSIZE;
+			vb.byteLength = ((vpos + WebGLContext2D._RECTVBSIZE) << 2);
+			var vbdata:* = vb.getFloat32Array();
+			for (var i:int = 0, ci:int = vpos - 16; i < 4; i++)
+			{
+				vbdata[vpos] = vbdata[ci] + dx;
+				++vpos;
+				++ci;
+				vbdata[vpos] = vbdata[ci] + dy;
+				++vpos;
+				++ci;
+				vbdata[vpos] = vbdata[ci];
+				++vpos;
+				++ci;
+				vbdata[vpos] = vbdata[ci];
+				++vpos;
+				++ci;
+			}
+			vb._upload = true;
+		}
 		
 		public static function fillRectImgVb(vb:VertexBuffer2D, clip:Rectangle, x:Number, y:Number, width:Number, height:Number, uv:Array, m:Matrix, _x:Number, _y:Number, dx:Number, dy:Number, round:Boolean = false):Boolean {
 			/*[DISABLE-ADD-VARIABLE-DEFAULT-VALUE]*/
-			'use strict';
+			//'use strict';
 			
 			var mType:int = 1;
 			var toBx:Number, toBy:Number, toEx:Number, toEy:Number;
@@ -162,13 +182,12 @@ package laya.webgl.utils {
 			var finalX:Number, finalY:Number, offsetX:Number, offsetY:Number;
 			
 			var a:Number = m.a, b:Number = m.b, c:Number = m.c, d:Number = m.d;
-			var useClip:Boolean = false;// = clip.width < WebGLContext2D._MAXSIZE;
+			var useClip:Boolean = clip && clip.width < WebGLContext2D._MAXSIZE;
 			if (a !== 1 || b !== 0 || c !== 0 || d !== 1) {
 				m.bTransform = true;
 				if (b === 0 && c === 0) {
 					
-					//x |= 0; y |= 0;_x |= 0; _y |= 0;浮点转换为整型,存在精度问题
-					mType = useClip ? 30 : 23;
+					mType = 23;// useClip ? 30 : 23;
 					w0 = width + x, h0 = height + y;
 					tx = m.tx + _x, ty = m.ty + _y;
 					toBx = a * x + tx;
@@ -177,8 +196,7 @@ package laya.webgl.utils {
 					toEy = d * h0 + ty;
 				}
 			} else {
-				//x |= 0; y |= 0;_x |= 0; _y |= 0;				
-				mType = useClip ? 30 : 23;
+				mType = 23;// useClip ? 30 : 23;
 				m.bTransform = false;
 				toBx = x + m.tx + _x;
 				toEx = toBx + width;
@@ -191,15 +209,18 @@ package laya.webgl.utils {
 				cBx = clip.x, cBy = clip.y, cEx = clip.width + cBx, cEy = clip.height + cBy;
 			}
 			
-			if (mType !== 1 && (toBx >= cEx || toBy >= cEy || toEx <= cBx || toEy <= cBy))
-				return false;
+			if (mType !== 1)
+			{
+				if (Math.min(toBx, toEx) >= cEx) return false;
+				if (Math.min(toBy, toEy) >= cEy) return false;
+				if (Math.max(toEx, toBx) <= cBx) return false;
+				if (Math.max(toEy, toBy) <= cBy) return false;
+			}
 			
-			var vpos:int = (vb._byteLength >> 2)/*FLOAT32*/ + WebGLContext2D._RECTVBSIZE;
-			vb.byteLength = (vpos << 2);
-			
+			var vpos:int = (vb._byteLength >> 2)/*FLOAT32*/;// + WebGLContext2D._RECTVBSIZE;
+			vb.byteLength = ((vpos + WebGLContext2D._RECTVBSIZE) << 2);
 			var vbdata:* = vb.getFloat32Array();
-			
-			vpos -= WebGLContext2D._RECTVBSIZE;
+			//vpos -= WebGLContext2D._RECTVBSIZE;
 			
 			vbdata[vpos + 2] = uv[0];
 			vbdata[vpos + 3] = uv[1];
@@ -270,6 +291,7 @@ package laya.webgl.utils {
 					vbdata[vpos + 13] = toEy;
 				}
 				break;
+			/*
 			//case 20://有缩放，有建材
 			case 30://无变换，有剪裁
 				if (toBx < cBx || toBy < cBy || toEx > cEx || toEy > cEy) {
@@ -316,7 +338,7 @@ package laya.webgl.utils {
 					vbdata[vpos + 9] = toEy;
 					vbdata[vpos + 12] = toBx;
 					vbdata[vpos + 13] = toEy;
-				}
+				}*/
 			}
 			vb._upload = true;
 			return true;
@@ -327,7 +349,7 @@ package laya.webgl.utils {
 			'use strict';
 			
 			var linew:Number = width * .5;
-
+			
 			var data:Array = _fillLineArray;
 			var perpx:Number = -(fy - ty), perpy:Number = fx - tx;
 			var dist:Number = Math.sqrt(perpx * perpx + perpy * perpy);
